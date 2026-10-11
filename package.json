@@ -1,0 +1,13 @@
+{
+  "name": "awana-grand-prix",
+  "version": "1.0.0",
+  "private": true,
+  "description": "4레인 어와나 그랑프리 진행자 및 관객 대시보드",
+  "type": "module",
+  "engines": { "node": ">=24.0.0 <25" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --test",
+    "backup": "node --env-file-if-exists=.env scripts/backup.js"
+  }
+}

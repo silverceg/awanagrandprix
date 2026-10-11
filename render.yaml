@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: awana-grand-prix
+    runtime: node
+    plan: 0.5c-512mb
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: "off"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 24.20.0
+      - key: HOST_PIN
+        sync: false
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: awana-data
+      mountPath: /var/data
+      sizeGB: 1
