@@ -12,8 +12,6 @@ services:
         value: production
       - key: NODE_VERSION
         value: 24.20.0
-      - key: HOST_PIN
-        sync: false
       - key: DATA_DIR
         value: /var/data
     disk:

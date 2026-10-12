@@ -14,12 +14,13 @@ const csvCell = value => {
   return '"' + s.replaceAll('"', '""') + '"';
 };
 export function createApp({ dataDir = process.env.DATA_DIR || join(root, 'data'), pin = process.env.HOST_PIN, production = process.env.NODE_ENV === 'production' } = {}) {
-  if (!pin || pin.length < 8 || pin === 'change-this-to-your-own-password') throw new Error('HOST_PIN을 8자 이상의 개인 비밀번호로 설정하세요. README의 시작 방법을 참고하세요.');
+  const passwordRequired = typeof pin === 'string' && pin.trim().length > 0;
+  if (passwordRequired && (pin.length < 8 || pin === 'change-this-to-your-own-password')) throw new Error('비밀번호 없이 사용하려면 HOST_PIN을 비우거나 삭제하세요. 비밀번호를 사용할 경우 8자 이상으로 설정하세요.');
   const store = createStore(resolve(dataDir));
   const sessions = new Map(), attempts = new Map(), clients = new Set();
   const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
   const tokenOf = req => (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith('awana_session='))?.slice(14);
-  function authorized(req) { const token = tokenOf(req); return token && (sessions.get(token) || 0) > Date.now(); }
+  function authorized(req) { if (!passwordRequired) return true; const token = tokenOf(req); return token && (sessions.get(token) || 0) > Date.now(); }
   const sessionCookie = value => `awana_session=${value}; HttpOnly; SameSite=Strict; Path=/; ${production ? 'Secure; ' : ''}`;
   function broadcast(state) {
     const message = `event: state\ndata: ${JSON.stringify(state)}\n\n`;
@@ -42,20 +43,25 @@ export function createApp({ dataDir = process.env.DATA_DIR || join(root, 'data')
       if (req.method === 'GET') {
         if (path === '/healthz') { store.read(); return json(res, 200, { ok: true }); }
         if (path === '/api/state') return json(res, 200, store.read());
-        if (path === '/api/session') return json(res, 200, { authenticated: Boolean(authorized(req)) });
+        if (path === '/api/session') return json(res, 200, { authenticated: Boolean(authorized(req)), passwordRequired });
         if (path === '/api/events') {
           if (clients.size >= 100) throw new RaceError('연결 수가 많습니다. 잠시 후 새로고침하세요.', 503);
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
           res.write(`event: state\ndata: ${JSON.stringify(store.read())}\n\n`);
           clients.add(res); req.on('close', () => clients.delete(res)); return;
         }
-        if (['/api/audit', '/api/export', '/api/csv'].includes(path)) {
+        if (['/api/audit', '/api/export', '/api/csv', '/api/reset-backup'].includes(path)) {
           if (!authorized(req)) throw new RaceError('진행자 로그인이 필요합니다.', 401);
+          if (path === '/api/reset-backup') {
+            const backup = store.resetBackup();
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': 'attachment; filename="awana-before-reset.json"' });
+            res.end(backup); return;
+          }
           if (path === '/api/audit') return json(res, 200, store.audit());
           const state = store.read();
           if (path === '/api/export') {
             res.setHeader('Content-Disposition', 'attachment; filename="awana-records.json"');
-            return json(res, 200, { exportedAt: new Date().toISOString(), state, recentAudit: store.audit() });
+            return json(res, 200, store.export());
           }
           const rows = [['부문', '라운드', '상태', '순위', '차량번호', '이름', '자동차 이름', '1차(초)', '2차(초)', '최고기록(초)', '재경기(초)', '진출']];
           for (const d of Object.values(state.divisions)) for (const r of d.rounds) for (const row of standings(d, r)) {
@@ -64,7 +70,13 @@ export function createApp({ dataDir = process.env.DATA_DIR || join(root, 'data')
           res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="awana-results.csv"' });
           res.end('\ufeff' + rows.map(row => row.map(csvCell).join(',')).join('\r\n')); return;
         }
-        const assets = { '/': 'host.html', '/host': 'host.html', '/tv': 'tv.html', '/host.js': 'host.js', '/tv.js': 'tv.js', '/common.js': 'common.js', '/style.css': 'style.css', '/tv.css': 'tv.css', '/fonts/Jua-Regular.ttf': 'fonts/Jua-Regular.ttf', '/fonts/LilitaOne-Regular.ttf': 'fonts/LilitaOne-Regular.ttf', '/fonts/Jua-Regular.ttf': 'fonts/Jua-Regular.ttf', '/fonts/LilitaOne-Regular.ttf': 'fonts/LilitaOne-Regular.ttf', '/race-hero.jpg': 'race-hero.jpg', '/favicon.svg': 'favicon.svg' };
+        if (/^\/media\/[a-f0-9]{64}\.jpg$/.test(path)) {
+          const bytes = store.media(path);
+          if (!bytes) throw new RaceError('사진을 찾을 수 없습니다.',404);
+          res.writeHead(200, {'Content-Type':'image/jpeg','Cache-Control':'public, max-age=31536000, immutable'});
+          res.end(Buffer.from(bytes)); return;
+        }
+        const assets = { '/leaderboard':'leaderboard.html', '/leaderboard.js':'leaderboard.js', '/leaderboard.css':'leaderboard.css', '/': 'host.html', '/host': 'host.html', '/tv': 'tv.html', '/host.js': 'host.js', '/tv.js': 'tv.js', '/common.js': 'common.js', '/style.css': 'style.css', '/tv.css': 'tv.css', '/fonts/Jua-Regular.ttf': 'fonts/Jua-Regular.ttf', '/fonts/LilitaOne-Regular.ttf': 'fonts/LilitaOne-Regular.ttf', '/fonts/Jua-Regular.ttf': 'fonts/Jua-Regular.ttf', '/fonts/LilitaOne-Regular.ttf': 'fonts/LilitaOne-Regular.ttf', '/race-hero.jpg': 'race-hero.jpg', '/favicon.svg': 'favicon.svg' };
         if (!Object.hasOwn(assets, path)) throw new RaceError('페이지를 찾을 수 없습니다.', 404);
         const file = assets[path], extension = file.split('.').at(-1);
         const types = { html: 'text/html', js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', jpg: 'image/jpeg', ttf: 'font/ttf', ttf: 'font/ttf' };
@@ -76,11 +88,14 @@ export function createApp({ dataDir = process.env.DATA_DIR || join(root, 'data')
       if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new RaceError('다른 사이트에서 보낸 요청을 허용하지 않습니다.', 403);
       if (!req.headers['content-type']?.startsWith('application/json')) throw new RaceError('JSON 요청만 허용합니다.', 415);
       const chunks = []; let size = 0;
-      for await (const chunk of req) { size += chunk.length; if (size > 128000) throw new RaceError('요청이 너무 큽니다.', 413); chunks.push(chunk); }
+      const bodyLimit = path === '/api/restore' ? 100000000 : path === '/api/participant-update' ? 520000 : 128000;
+      if (path !== '/api/login' && !authorized(req)) throw new RaceError('진행자 로그인이 필요합니다.',401);
+      for await (const chunk of req) { size += chunk.length; if (size > bodyLimit) throw new RaceError('요청이 너무 큽니다.', 413); chunks.push(chunk); }
       let body;
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new RaceError('올바르지 않은 JSON입니다.'); }
       if (!body || Array.isArray(body) || typeof body !== 'object') throw new RaceError('올바르지 않은 요청입니다.');
       if (path === '/api/login') {
+        if (!passwordRequired) return json(res, 200, { ok: true });
         // Render terminates HTTPS at its proxy. Use the rightmost forwarded address for throttling.
         const ip = (production ? req.headers['x-forwarded-for']?.split(',').at(-1)?.trim() : null) || req.socket.remoteAddress;
         let attempt = attempts.get(ip);
