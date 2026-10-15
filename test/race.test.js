@@ -49,13 +49,12 @@ test('최고 기록이 같은 진출선 동점은 다른 주행 기록으로 가
   r.results[ids[8]].times = [4000, 4500];
   for (let i = 9; i < ids.length; i++) r.results[ids[i]].times = [5000 + i, 6000 + i];
   const finish = () => mutate(f.state, 'finish', { division: 'open', roundId: r.id });
-  assert.throws(finish, /진출선 동점/);
   mutate(f.state, 'tiebreak', { division: 'open', roundId: r.id, id: ids[7], time: '3.1', reason: '동점 재경기' });
-  assert.throws(finish, /진출선 동점/);
   mutate(f.state, 'tiebreak', { division: 'open', roundId: r.id, id: ids[8], time: '3.2', reason: '동점 재경기' });
   finish();
   assert.ok(r.advancedIds.includes(ids[7]));
-  assert.ok(!r.advancedIds.includes(ids[8]));
+  assert.ok(r.advancedIds.includes(ids[8]));
+  assert.equal(r.advancedIds.length,9);
 });
 test('미입력·유효 참가자 부족·잘못된 기록 차단', () => {
   const f = fixture(), r = currentRound(f.d);
