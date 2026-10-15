@@ -26,7 +26,7 @@ test('엑셀 잘못된 행은 조용히 버리지 않고 오류 안내',()=>{
 });
 test('혼합 번호 붙여넣기: 직접 지정한 번호를 먼저 예약하고 빈칸 자동 배정',()=>{
   const s=freshState();mutate(s,'participants',{division:'open',entries:parseRoster('번호\t이름\n\t자동\n1\t지정\n\t다음')});
-  assert.deepEqual(s.divisions.open.participants.map(p=>p.car),['2','1','3']);
+  assert.deepEqual(s.divisions.open.participants.map(p=>p.car),['41','1','42']);
 });
 test('수동 조 편성: 40/18명 중복 없이 배치, 2차 선수 순서 유지, 변경 후 백업 복원',()=>{
   const s=freshState();
