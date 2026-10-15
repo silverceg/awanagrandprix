@@ -7,6 +7,19 @@ export function numberedGroups(players) {
   const ids=[...players].sort((a,b)=>a.car.localeCompare(b.car,'ko',{numeric:true})).map(p=>p.id);
   return Array.from({length:Math.ceil(ids.length/4)},(_,i)=>ids.slice(i*4,i*4+4));
 }
+// Keep intentional gaps; use spare slots at the end before adding a heat.
+export function clearGroupSlot(groups, index) {
+  const slots=groups.flatMap(group=>Array.from({length:4},(_,i)=>group[i]||null));
+  if(!Number.isInteger(index) || index<0 || index>=slots.length) throw Error('조 편성 위치를 확인하세요.');
+  let carry=slots[index];
+  const lastOccupied=slots.findLastIndex(Boolean);
+  slots[index]=null;
+  for(let i=index+1;carry && i<slots.length;i++) {
+    if(slots[i] || i>lastOccupied) [slots[i],carry]=[carry,slots[i]];
+  }
+  if(carry) slots.push(carry,null,null,null);
+  return Array.from({length:slots.length/4},(_,i)=>slots.slice(i*4,i*4+4));
+}
 export function orderedGroups(ids) {
   if (!ids.length) return [];
   const count = Math.ceil(ids.length / 4), size = Math.floor(ids.length / count), extra = ids.length % count;
@@ -55,7 +68,7 @@ export function rows(d, r = current(d)) {
     const rec = r.results[id], complete = rec.times.every(t => t !== null), valid = rec.times.filter(t => typeof t === 'number');
     return { ...d.participants.find(p => p.id === id), ...rec, complete, best: complete && valid.length ? Math.min(...valid) : Infinity };
   });
-  const compare = (a, b) => a.best - b.best || (typeof a.tieBreak === 'number' ? a.tieBreak : Infinity) - (typeof b.tieBreak === 'number' ? b.tieBreak : Infinity) || 0;
+  const compare = (a, b) => a.best - b.best || (!r.advance ? (typeof a.tieBreak === 'number' ? a.tieBreak : Infinity) - (typeof b.tieBreak === 'number' ? b.tieBreak : Infinity) : 0) || 0;
   data.sort((a, b) => compare(a, b) || a.car.localeCompare(b.car, 'ko', { numeric: true }));
   data.forEach((row, i) => { row.rank = Number.isFinite(row.best) ? (i && compare(row, data[i - 1]) === 0 ? data[i - 1].rank : i + 1) : null; });
   return data;
