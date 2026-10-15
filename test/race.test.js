@@ -76,3 +76,41 @@ test('재경기도 동점이면 결승 확정 차단', () => {
   mutate(f.state, 'finish', { division: 'open', roundId: final.id });
   assert.equal(final.winnerId, final.entrantIds[0]);
 });
+
+test('어와나 45명과 일반부 18명 교차 진행: 다음 라운드 참가자·조 자동 편성', () => {
+  const state = freshState();
+  for (const [division, count] of [['awana', 45], ['open', 18]]) {
+    mutate(state, 'participants', { division, entries: Array.from({length: count}, (_, i) => ({name: `선수${i + 1}`, car: String(i + 1)})) });
+  }
+  mutate(state, 'start', {division: 'awana'});
+  assert.equal(currentRound(state.divisions.awana).groups.length, 12);
+  const schedule = [['awana',16,4], ['open',8,2], ['awana',8,2], ['open',4,1], ['awana',4,1], ['open',0,1], ['awana',0,1]];
+  for (const [division, nextCount, groupCount] of schedule) {
+    const d = state.divisions[division], other = state.divisions[division === 'awana' ? 'open' : 'awana'];
+    const untouched = structuredClone(other);
+    if (!currentRound(d)) mutate(state, 'start', {division});
+    const r = currentRound(d);
+    if (division === 'open' && r.index === 0) assert.equal(r.groups.length, 5);
+    mutate(state, 'display', {division, heat: 0, run: 0, mode: 'race'});
+    assert.equal(state.display.division, division);
+    for (let heat = 0; heat < r.groups.length; heat++) for (let run = 0; run < 2; run++) {
+      const records = Object.fromEntries(lanesFor(r, heat, run).filter(Boolean).map(id => [id, ((3000 + r.entrantIds.indexOf(id) * 10 + run * 100) / 1000).toFixed(3)]));
+      mutate(state, 'records', {division, roundId: r.id, heat, run, records});
+    }
+    const previous = structuredClone(r.results), expected = standings(d).slice(0,nextCount).map(p => p.id);
+    mutate(state, 'finish', {division, roundId: r.id});
+    assert.deepEqual(r.results, previous);
+    assert.deepEqual(other, untouched);
+    assert.equal(r.status, 'completed');
+    const next = currentRound(d);
+    assert.equal(next.groups.length, groupCount);
+    if (nextCount) {
+      const appearanceOrder = r.groups.flat().filter(id => expected.includes(id));
+      assert.deepEqual(next.entrantIds, appearanceOrder);
+      assert.deepEqual(new Set(next.groups.flat()), new Set(expected));
+      assert.ok(next.groups.every(g => g.length === 4));
+      for (const rec of Object.values(next.results)) assert.deepEqual(rec, {times: [null,null], scoreMs: 0, tieBreak: null});
+      assert.deepEqual(next.groups, Array.from({length: groupCount}, (_,i) => appearanceOrder.slice(i*4,i*4+4)));
+    } else assert.equal(next.winnerId, next.entrantIds[0]);
+  }
+});

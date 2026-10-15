@@ -127,3 +127,25 @@ test('자동차 이름: 기존 명단 호환, 인증, 기록 보존, 내보내�
     assert.equal(result.data.divisions.open.participants[0].carName, '');
   } finally { if (app) await app.close(); rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('비밀번호 미설정: 바로 접속·저장·내보내기, 교차 사이트 차단 유지', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'awana-open-test-')); let app;
+  try {
+    app = createApp({ dataDir: dir, pin: '', production: false });
+    await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${app.server.address().port}`;
+    assert.deepEqual(await (await fetch(base + '/api/session')).json(), { authenticated: true, passwordRequired: false });
+    const post = (path, body, headers = {}) => fetch(base + '/api/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+    assert.equal((await post('login', {})).status, 200);
+    let res = await post('participants', { revision: 0, division: 'open', entries: [{ name: '테스트 참가자', carName: '번개호' }] });
+    assert.equal(res.status, 200);
+    const s = await res.json(); assert.equal(s.divisions.open.participants[0].carName, '번개호');
+    assert.equal((await fetch(base + '/api/export')).status, 200);
+    assert.equal((await post('title', { revision: s.revision, title: '외부 변경' }, { origin: 'https://evil.example' })).status, 403);
+    assert.equal((await post('title', { revision: 0, title: '오래된 저장' })).status, 409);
+    await app.close(); app = null;
+    app = createApp({ dataDir: dir, pin: '' });
+    assert.deepEqual(app.store.read(), s);
+    assert.throws(() => createApp({ dataDir: dir, pin: 'short' }), /8자/);
+  } finally { if (app) await app.close(); rmSync(dir, { recursive: true, force: true }); }
+});
