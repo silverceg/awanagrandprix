@@ -3,6 +3,10 @@ export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '
 export const fmt = value => value === 'DNF' ? 'DNF' : value == null ? '—' : (value / 1000).toFixed(3);
 export const current = d => d.rounds.at(-1);
 export const nextCount = key => key === 'awana' ? 16 : 8;
+export function numberedGroups(players) {
+  const ids=[...players].sort((a,b)=>a.car.localeCompare(b.car,'ko',{numeric:true})).map(p=>p.id);
+  return Array.from({length:Math.ceil(ids.length/4)},(_,i)=>ids.slice(i*4,i*4+4));
+}
 export function orderedGroups(ids) {
   if (!ids.length) return [];
   const count = Math.ceil(ids.length / 4), size = Math.floor(ids.length / count), extra = ids.length % count;
@@ -58,7 +62,7 @@ export function rows(d, r = current(d)) {
 }
 export function lanes(r, heat, run) {
   const result = [null, null, null, null];
-  r.groups[heat]?.forEach((id, i) => { result[(i + 2 * run) % 4] = id; });
+  r.groups[heat]?.forEach((id, i) => { result[i] = id; });
   return result;
 }
 export function ranking(d, r, limit = Infinity, offset = 0) {

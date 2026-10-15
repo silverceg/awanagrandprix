@@ -1,4 +1,4 @@
-import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups } from './common.js';
+import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups, numberedGroups } from './common.js';
 
 let state, revision, division = 'awana', heat = 0, run = 0, history = -1, loggedIn = false, dirty = false, saving = false;
 let passwordRequired = true;
@@ -41,12 +41,27 @@ function backupPanel() {
 function registration(d) {
   return `<section class="card"><div class="section-head"><div><span class="eyebrow">01 / CHECK IN</span><h2>이름부터 등록해요</h2></div><button id="prepare-groups" class="primary" ${d.participants.length < nextCount(division) ? 'disabled' : ''}>수동 조 편성하기 →</button></div><p>이름만 입력해도 등록됩니다. 번호를 비워 두면 임시 번호를 부여하며, 아래 명단에서 당일 스티커 번호·자동차 이름·사진 두 장을 나중에 추가할 수 있습니다.</p><form id="single-participant-form" class="inline-form"><label>선수 이름 · 필수<input name="name" maxlength="40" placeholder="예: 김하늘" required></label><label>스티커 번호 · 나중에 가능<input name="car" maxlength="12" placeholder="비워 두면 자동 번호"></label><label>자동차 이름 · 나중에 가능<input name="carName" maxlength="24" placeholder="예: 번개호"></label><button class="primary">이름 등록 +</button></form><div class="excel-paste"><h3>엑셀 명단 한 번에 붙여넣기</h3><p class="hint">엑셀의 셀 영역을 복사(Ctrl+C)하고 아래에 붙여넣기(Ctrl+V) 하세요. 이름 열만 복사해도 됩니다. 사진은 등록 후 참가자별로 추가하세요.</p><form id="participants-form"><label>복사한 열 순서<select id="paste-format" name="format"><option value="auto">자동 인식 · 제목 행 포함 가능</option><option value="name">이름만</option><option value="number-name-car">번호 / 이름 / 자동차 이름</option><option value="name-car">이름 / 자동차 이름</option></select></label><label for="entries">명단 붙여넣기</label><textarea id="entries" name="entries" rows="6" placeholder="번호&#9;이름&#9;자동차 이름&#10;1&#9;김하늘&#9;번개호&#10;2&#9;박서준&#9;노란 로켓" required></textarea><p class="hint">제목 행: 번호 · 이름 · 자동차 이름. 번호와 자동차 이름은 빈칸으로 두어도 됩니다. 문자 번호(예: A01)를 쓰는 경우 열 순서를 직접 선택하세요.</p><div class="form-actions"><button id="preview-roster" class="ghost" type="button">붙여넣은 명단 확인</button><button class="primary" type="submit">명단 한 번에 추가</button></div><div id="paste-preview" aria-live="polite"></div></form></div><p class="hint">확정 인원: 어와나 40명 · 일반부 18명. 예선 시작 후 추가·삭제는 잠기지만, 개인 정보와 사진은 계속 수정할 수 있습니다.</p></section>`;
 }
+function groupPlayers() {
+  const d=state.divisions[division],r=current(d);
+  return (r?.entrantIds || d.participants.map(p=>p.id)).map(id=>d.participants.find(p=>p.id===id));
+}
+function groupGrid(groups,players) {
+  return groups.map((group,h)=>`<fieldset><legend>${h+1}조 · ${group.filter(Boolean).length}명</legend>${Array.from({length:4},(_,lane)=>{const id=group[lane]||'';return `<label>${lane+1}레인<select name="slot-${h}-${lane}" data-group-slot data-previous="${id}"><option value="" ${!id?'selected':''}>빈 레인</option>${players.map(p=>`<option value="${p.id}" ${p.id===id?'selected':''}>#${e(p.car)} ${e(p.name)}</option>`).join('')}</select></label>`;}).join('')}<button type="button" class="small ghost" data-remove-group="${h}">이 조 없애기</button></fieldset>`).join('');
+}
+function readGroups() {
+  return [...app.querySelectorAll('.manual-grid fieldset')].map(el=>[...el.querySelectorAll('[data-group-slot]')].map(select=>select.value||null));
+}
+function updateGroupSummary() {
+  const groups=readGroups(),players=groupPlayers(),assigned=new Set(groups.flat().filter(Boolean));
+  const missing=players.filter(p=>!assigned.has(p.id));
+  $('#group-summary').innerHTML=missing.length?`<b>미배치 ${missing.length}명</b> · ${missing.map(p=>'#'+e(p.car)+' '+e(p.name)).join(' / ')}<br>빈 레인에서 이 선수를 선택하거나 ‘조 추가’를 누르세요.`:`<b>${players.length}명 모두 배치 완료</b> · ${groups.filter(g=>g.some(Boolean)).length}개 조`;
+  app.querySelectorAll('.manual-grid fieldset').forEach((el,i)=>{el.querySelector('legend').textContent=`${i+1}조 · ${groups[i].filter(Boolean).length}명`;});
+}
 function manualGroups(d, r) {
   if (r && (r.status !== 'active' || Object.values(r.results).some(rec=>rec.times.some(t=>t!==null) || rec.tieBreak!==null))) return '<details class="card"><summary>수동 조 편성</summary><p class="hint">기록 입력이 시작된 라운드는 조를 변경할 수 없습니다. 다음 라운드가 만들어지면 첫 기록 입력 전에 조를 조정할 수 있습니다.</p></details>';
   if (d.participants.length < nextCount(division)) return '';
-  const groups = r?.groups || orderedGroups(d.participants.map(p=>p.id));
-  const players = (r?.entrantIds || d.participants.map(p=>p.id)).map(id=>d.participants.find(p=>p.id===id));
-  return `<details class="card manual-panel" ${r ? '' : 'open'}><summary>수동 조 편성 · ${r?.name || '예선 준비'} · ${groups.length}개 조</summary><p>각 레인에서 선수를 선택하면 해당 선수와 자리를 맞바꿉니다. 중복이나 누락 없이 원하는 순서로 배치할 수 있습니다.</p><p class="hint">아래는 1차 주행 레인입니다. 2차는 같은 조에서 1↔3, 2↔4 레인으로 자동 교체합니다. ${r?'첫 기록을 입력하기 전까지만 변경할 수 있습니다.':'편성을 마친 뒤 아래 버튼을 누르면 이 순서로 예선이 시작됩니다.'}</p><form id="groups-form"><div class="manual-grid">${groups.map((group,h)=>`<fieldset><legend>${h+1}조 · ${group.length}명</legend>${group.map((id,lane)=>`<label>${lane+1}레인<select name="slot-${h}-${lane}" data-group-slot data-previous="${id}">${players.map(p=>`<option value="${p.id}" ${p.id===id?'selected':''}>#${e(p.car)} ${e(p.name)}</option>`).join('')}</select></label>`).join('')}</fieldset>`).join('')}</div><button class="primary" type="submit">${r?'조 편성 저장':'이 편성으로 예선 시작'}</button><p class="hint">저장 버튼을 눌러야 서버에 반영됩니다. 다음 라운드는 기존 출전순에서 탈락자만 제외하여 자동 편성됩니다.</p></form></details>`;
+  const groups = r?.groups || orderedGroups(d.participants.map(p=>p.id)),players=groupPlayers();
+  return `<details class="card manual-panel" ${r ? '' : 'open'}><summary>수동 조 편성 · ${r?.name || '예선 준비'}</summary><p>‘빈 레인’을 선택하면 해당 칸이 비워집니다. 빠진 선수는 다른 빈칸에 배치하세요. 이미 배치된 선수를 고르면 두 자리가 바뀝니다.</p><p class="hint">${r?'첫 기록을 입력하기 전까지만 변경할 수 있습니다.':'편성을 마친 뒤 아래 버튼을 누르면 이 순서로 예선이 시작됩니다.'}</p><form id="groups-form"><div class="form-actions"><button id="number-groups" type="button" class="ghost">번호순 자동 편성</button><span class="hint">스티커 번호순으로 4명씩 새로 배치합니다. 수동 조정 후 저장할 수 있습니다.</span></div><p id="group-summary" class="notice" aria-live="polite"><b>${players.length}명 모두 배치 완료</b> · ${groups.length}개 조</p><div class="manual-grid">${groupGrid(groups,players)}</div><div class="form-actions"><button id="add-group" type="button" class="ghost">+ 조 추가</button><button class="primary" type="submit">${r?'조 편성 저장':'이 편성으로 예선 시작'}</button></div><p class="hint">모든 선수를 한 번씩 배치해야 저장됩니다. 모두 빈 조는 저장할 때 제외합니다. 다음 라운드는 기존 출전순에서 탈락자만 제외하여 자동 편성됩니다.</p></form></details>`;
 }
 function rosterPreview() {
   const entries=parseRoster($('#entries').value,$('#paste-format').value);
@@ -91,13 +106,13 @@ function racePanel(d, r) {
   const winner = r.winnerId && d.participants.find(p => p.id === r.winnerId);
   return `${winner ? `<section class="winner-banner"><span>CHAMPION · ${d.name}</span><h2>🏆 ${e(winner.name)} <small>#${e(winner.car)}</small></h2></section>` : ''}
   <div class="host-grid"><section class="card"><div class="section-head"><div><span class="eyebrow">02 / TIMEKEEPING</span><h2>${r.name} 기록 입력</h2></div><span class="tag">${r.status === 'completed' ? '종료 · 읽기 전용' : '진행 중'}</span></div>
-  <div class="race-controls"><label>경기 조<select id="heat">${r.groups.map((g, i) => `<option value="${i}" ${heat === i ? 'selected' : ''}>${i + 1}조 · ${g.length}명${g.every(id => r.results[id].times.every(t => t !== null)) ? ' ✓' : ''}</option>`).join('')}</select></label><label>주행<select id="run"><option value="0" ${run === 0 ? 'selected' : ''}>1차 주행</option><option value="1" ${run === 1 ? 'selected' : ''}>2차 주행 · 레인 교체</option></select></label><button id="broadcast" class="ghost">이 경기를 TV에 표시</button></div>
+  <div class="race-controls"><label>경기 조<select id="heat">${r.groups.map((g, i) => `<option value="${i}" ${heat === i ? 'selected' : ''}>${i + 1}조 · ${g.filter(Boolean).length}명${g.filter(Boolean).every(id => r.results[id].times.every(t => t !== null)) ? ' ✓' : ''}</option>`).join('')}</select></label><label>주행<select id="run"><option value="0" ${run === 0 ? 'selected' : ''}>1차 주행</option><option value="1" ${run === 1 ? 'selected' : ''}>2차 주행</option></select></label><button id="broadcast" class="ghost">이 경기를 TV에 표시</button></div>
   <form id="records-form"><div class="lane-inputs">${ids.map((id, i) => {
     const p = d.participants.find(p => p.id === id), value = id && r.results[id].times[run];
-    return `<div class="lane-input lane-${i + 1}"><span class="lane-label">LANE ${i + 1}</span>${id ? `<div class="driver"><span class="car">#${e(p.car)}</span><b>${e(p.name)}</b></div><label for="time-${id}">기록 (초)<input id="time-${id}" name="${id}" value="${value === null ? '' : fmt(value)}" placeholder="0.000" autocomplete="off" inputmode="decimal" required ${r.status !== 'active' ? 'disabled' : ''}></label><button type="button" class="small ghost" data-dnf="${id}" ${r.status !== 'active' ? 'disabled' : ''}>미완주 DNF</button>` : '<div class="empty">빈 레인</div>'}</div>`;
+    return `<div class="lane-input lane-${i + 1}"><span class="lane-label">기록칸 ${i + 1}</span>${id ? `<div class="driver"><span class="car">#${e(p.car)}</span><b>${e(p.name)}</b></div><label for="time-${id}">기록 (초)<input id="time-${id}" name="${id}" value="${value === null ? '' : fmt(value)}" placeholder="0.000" autocomplete="off" inputmode="decimal" required ${r.status !== 'active' ? 'disabled' : ''}></label><button type="button" class="small ghost" data-dnf="${id}" ${r.status !== 'active' ? 'disabled' : ''}>미완주 DNF</button>` : '<div class="empty">빈 레인</div>'}</div>`;
   }).join('')}</div><label>수정 사유 <span class="muted">기존 기록을 수정할 때 필수</span><input name="reason" maxlength="200" placeholder="예: 2레인 스톱워치 재확인" ${r.status !== 'active' ? 'disabled' : ''}></label><div class="form-actions"><button class="primary" ${r.status !== 'active' ? 'disabled' : ''}>${heat + 1}조 ${run + 1}차 기록 저장</button><button type="button" id="next" class="ghost">다음 주행 →</button></div></form>
   <p class="hint">저장 전 빈칸은 미입력입니다. 새 라운드 기록은 0.000부터 시작하며, 입력 전에는 순위에 반영하지 않습니다. DNF는 다른 한 번의 유효 기록에 영향을 주지 않습니다.</p></section>
-  <aside class="card"><span class="eyebrow">03 / RACE DIRECTOR</span><h2>진행 및 TV 화면</h2><p class="broadcast-note">현재 송출: ${state.divisions[display.division].name}<br>${display.mode === 'ranking' ? '전체 순위' : `${display.heat + 1}조 · ${display.run + 1}차 주행`}</p><button id="rank-tv" class="ghost full">이 부문 순위 TV에 표시</button><p class="hint">TV 화면은 자동으로 갱신됩니다. 옆 순위는 8명씩 순환합니다. 전체 순위 전용 화면은 모든 순위를 한 번에 보여줍니다.</p><p><a href="/leaderboard" target="_blank" rel="noopener">전체 순위 · 자동 전환 ↗</a> · <a href="/leaderboard?division=awana" target="_blank" rel="noopener">어와나 전용 ↗</a> · <a href="/leaderboard?division=open" target="_blank" rel="noopener">일반부 전용 ↗</a> · <a href="/leaderboard?division=both" target="_blank" rel="noopener">두 부문 함께 ↗</a></p><p class="hint">전체 순위 자동 화면은 어와나 16강부터 두 부문을 나란히 보여줍니다. 각 부문의 새 라운드는 빈칸부터 시작합니다.</p><hr><h3>${r.advance ? `${r.name} 종료 → 상위 ${r.advance}명 · ${Math.ceil(r.advance / 4)}개 조 자동 편성` : '결승 종료 → 최종 순위 확정'}</h3><p class="hint">모든 기록 입력과 진출선 동점 해소 후 진행할 수 있습니다. 종료하면 기록으로 진출자를 선발하고, 이전 조·1차 레인 출전순에서 탈락자만 제외하여 4명씩 자동 편성합니다. 스티커 번호는 유지됩니다. 종료한 라운드 기록은 보존됩니다.</p><button id="finish" class="primary full" ${r.status !== 'active' ? 'disabled' : ''}>${r.name} 종료${r.advance ? ' 및 다음 조 자동 편성' : ' 및 결과 확정'}</button><hr><details ${r.index > 0 ? 'open' : ''}><summary>${r.name} 현재 조 편성 · ${r.groups.length}개 조</summary>${r.groups.map((group, i) => `<div class="schedule"><b>${i + 1}조</b>${group.map((id, j) => { const p = d.participants.find(p => p.id === id); return `<p>#${e(p.car)} ${e(p.name)} <small>${j + 1} → ${(j + 2) % 4 + 1}레인</small></p>`; }).join('')}</div>`).join('')}</details></aside></div>
+  <aside class="card"><span class="eyebrow">03 / RACE DIRECTOR</span><h2>진행 및 TV 화면</h2><p class="broadcast-note">현재 송출: ${state.divisions[display.division].name}<br>${display.mode === 'ranking' ? '전체 순위' : `${display.heat + 1}조 · ${display.run + 1}차 주행`}</p><button id="rank-tv" class="ghost full">이 부문 순위 TV에 표시</button><p class="hint">TV 화면은 자동으로 갱신됩니다. 옆 순위는 8명씩 순환합니다. 전체 순위 전용 화면은 모든 순위를 한 번에 보여줍니다.</p><p><a href="/leaderboard" target="_blank" rel="noopener">전체 순위 · 자동 전환 ↗</a> · <a href="/leaderboard?division=awana" target="_blank" rel="noopener">어와나 전용 ↗</a> · <a href="/leaderboard?division=open" target="_blank" rel="noopener">일반부 전용 ↗</a> · <a href="/leaderboard?division=both" target="_blank" rel="noopener">두 부문 함께 ↗</a></p><p class="hint">전체 순위 자동 화면은 어와나 16강부터 두 부문을 나란히 보여줍니다. 각 부문의 새 라운드는 빈칸부터 시작합니다.</p><hr><h3>${r.advance ? `${r.name} 종료 → 상위 ${r.advance}명 · ${Math.ceil(r.advance / 4)}개 조 자동 편성` : '결승 종료 → 최종 순위 확정'}</h3><p class="hint">모든 기록 입력과 진출선 동점 해소 후 진행할 수 있습니다. 종료하면 기록으로 진출자를 선발하고, 이전 조·1차 레인 출전순에서 탈락자만 제외하여 4명씩 자동 편성합니다. 스티커 번호는 유지됩니다. 종료한 라운드 기록은 보존됩니다.</p><button id="finish" class="primary full" ${r.status !== 'active' ? 'disabled' : ''}>${r.name} 종료${r.advance ? ' 및 다음 조 자동 편성' : ' 및 결과 확정'}</button><hr><details ${r.index > 0 ? 'open' : ''}><summary>${r.name} 현재 조 편성 · ${r.groups.length}개 조</summary>${r.groups.map((group, i) => `<div class="schedule"><b>${i + 1}조</b>${group.map((id, j) => { if(!id)return `<p>${j+1}레인 · 빈칸</p>`; const p = d.participants.find(p => p.id === id); return `<p>#${e(p.car)} ${e(p.name)} <small>편성 ${j + 1}레인</small></p>`; }).join('')}</div>`).join('')}</details></aside></div>
   ${ties.length && r.status === 'active' ? `<details class="card"><summary>동점자 재경기 입력 · ${ties.length}명</summary><p>최고 기록이 같은 참가자끼리 재경기를 진행하세요. 진출선에 걸린 동점자 모두의 기록이 필요합니다. 재경기도 동점이면 다시 경기한 기록으로 모두 갱신하세요.</p><form id="tie-form" class="inline-form"><label>동점 참가자<select name="id">${ties.map(p => `<option value="${p.id}">#${e(p.car)} ${e(p.name)} · 최고 ${fmt(p.best)} / 재경기 ${fmt(p.tieBreak)}</option>`).join('')}</select></label><label>재경기 기록 (초 또는 DNF)<input name="time" placeholder="3.215" required></label><label>재경기 사유<input name="reason" placeholder="예: 16위 진출선 동점 재경기" maxlength="200" required></label><button class="primary">재경기 저장</button></form></details>` : ''}`;
 }
 async function action(name, body = {}, onSuccess = () => {}) {
@@ -138,9 +153,9 @@ app.addEventListener('change', async event => {
   if (id === 'car-owner') { $('#car-name-input').value = state.divisions[division].participants.find(p => p.id === event.target.value)?.carName || ''; return; }
   if (event.target.hasAttribute?.('data-group-slot')) {
     const select=event.target, previous=select.dataset.previous;
-    const other=[...app.querySelectorAll('[data-group-slot]')].find(el=>el!==select && el.value===select.value);
+    const other=select.value && [...app.querySelectorAll('[data-group-slot]')].find(el=>el!==select && el.value===select.value);
     if(other){other.value=previous;other.dataset.previous=previous;}
-    select.dataset.previous=select.value;dirty=true;return;
+    select.dataset.previous=select.value;dirty=true;updateGroupSummary();return;
   }
   if(id==='paste-format'){ $('#paste-preview').innerHTML='';dirty=true;return; }
   if (!['heat', 'run', 'history'].includes(id)) return;
@@ -171,7 +186,9 @@ app.addEventListener('submit', async event => {
     catch(err){notify(err.message,true);}
   }
   if (form.getAttribute('id') === 'groups-form') {
-    const groups=(r?.groups || orderedGroups(state.divisions[division].participants.map(p=>p.id))).map((group,h)=>group.map((_,lane)=>fd.get(`slot-${h}-${lane}`)));
+    const groups=readGroups().filter(group=>group.some(Boolean));
+    const assigned=groups.flat().filter(Boolean),players=groupPlayers();
+    if(assigned.length!==players.length || new Set(assigned).size!==players.length){updateGroupSummary();notify('미배치 선수를 모두 조에 넣어 주세요.',true);return;}
     await action(r?'groups':'start',{groups,...(r?{roundId:r.id}:{})},()=>{heat=run=0;history=-1;});
   }
   if (form.getAttribute('id') === 'records-form') {
@@ -189,6 +206,13 @@ app.addEventListener('click', async event => {
   try {
   const b = event.target.closest('button'); if (!b || saving || mediaBusy) return;
   if(b.id==='preview-roster'){rosterPreview();return;}
+  if(b.id==='number-groups'){const players=groupPlayers();$('.manual-grid').innerHTML=groupGrid(numberedGroups(players),players);dirty=true;updateGroupSummary();return;}
+  if(b.id==='add-group' || b.dataset.removeGroup!==undefined){
+    const groups=readGroups(),players=groupPlayers();
+    if(b.id==='add-group'){if(groups.length>=players.length){notify('조는 참가자 수만큼만 추가할 수 있습니다.',true);return;}groups.push([null,null,null,null]);}
+    else groups.splice(Number(b.dataset.removeGroup),1);
+    $('.manual-grid').innerHTML=groupGrid(groups,players);dirty=true;updateGroupSummary();return;
+  }
   if (b.dataset.edit && clean()) { editorId=b.dataset.edit;photoDraft={};render();$('#participant-editor').scrollIntoView({behavior:'smooth',block:'center'}); }
   if (b.id === 'cancel-edit') { if (clean()) {editorId=null;photoDraft={};dirty=false;render();} return; }
   if (b.dataset.removePhoto) { const field=b.dataset.removePhoto;photoDraft[field]='';dirty=true;$('#preview-'+field).innerHTML=field==='photoData'?'선수 사진':'자동차 사진';return; }
@@ -200,7 +224,7 @@ app.addEventListener('click', async event => {
   if (b.id === 'broadcast' || b.id === 'rank-tv') { if (clean()) await action('display', { heat, run, mode: b.id === 'broadcast' ? 'race' : 'ranking' }); }
   const r = current(state.divisions[division]);
   if (b.id === 'next' && clean()) {
-    if (!r.groups[heat].every(id => r.results[id].times[run] !== null) && !confirm('현재 주행 기록이 아직 없습니다. 다음 주행으로 이동할까요?')) return;
+    if (!r.groups[heat].filter(Boolean).every(id => r.results[id].times[run] !== null) && !confirm('현재 주행 기록이 아직 없습니다. 다음 주행으로 이동할까요?')) return;
     let nextHeat = heat, nextRun = run;
     if (run === 0) nextRun = 1; else if (heat < r.groups.length - 1) { nextHeat++; nextRun = 0; } else { notify('마지막 주행입니다. 모든 기록을 확인한 뒤 라운드를 종료하세요.'); return; }
     await action('display', { heat: nextHeat, run: nextRun, mode: 'race' }, () => { heat = nextHeat; run = nextRun; });

@@ -47,9 +47,9 @@ function listLeaderLabel(d, r, leader) {
 }
 function raceCards(d, r, display, list) {
   const ids = r ? lanes(r, display.heat, display.run) : [null, null, null, null];
-  return `<section class="race-deck"><div class="deck-heading"><h2>${r ? `<b>${String(display.heat + 1).padStart(2, '0')}</b>조 <span>${display.run + 1}차 주행${display.run === 1 ? ' · 레인 교체' : ''}</span>` : '네 개의 레인, 하나의 설렘'}</h2><span class="deck-note">${r ? '이번 주행 기록 · 초' : '출발을 기다리고 있어요'}</span></div><div class="lane-grid">${ids.map((id, i) => {
+  return `<section class="race-deck"><div class="deck-heading"><h2>${r ? `<b>${String(display.heat + 1).padStart(2, '0')}</b>조 <span>${display.run + 1}차 주행</span>` : '네 개의 레인, 하나의 설렘'}</h2><span class="deck-note">${r ? '이번 주행 기록 · 초' : '출발을 기다리고 있어요'}</span></div><div class="lane-grid">${ids.map((id, i) => {
     const p = list.find(p => p.id === id), time = p?.times[display.run];
-    return `<article class="lane-card split-card lane-${i + 1} ${!p ? 'vacant' : ''}">${profile(p)}<div class="card-details"><div class="lane-top"><span class="lane-id">${i + 1}</span><span>LANE ${i + 1}</span><b>${p ? '#' + e(p.car) : ''}</b></div><h3 title="${p ? e(p.name) : ''}">${p ? e(p.name) : r ? '빈 레인' : '출발 대기'}</h3><div class="lane-time ${time === 'DNF' ? 'dnf' : ''}">${p ? time === null ? '<span class="ready-label">READY</span>' : fmt(time) : '<span class="ready-label">—</span>'}</div><p>${p ? time === 'DNF' ? '미완주 · 다음 기회도 힘차게!' : display.run === 1 ? `1차 <b>${fmt(p.times[0])}</b>` : time === null ? '모두 함께 응원해 주세요' : '멋진 도전, 잘했어요!' : r ? '이번 조는 쉬어갑니다' : '나의 도전이 시작되는 곳'}</p></div>${carCaption(p)}</article>`;
+    return `<article class="lane-card split-card lane-${i + 1} ${!p ? 'vacant' : ''}">${profile(p)}<div class="card-details"><div class="lane-top"><span class="lane-id">${i + 1}</span><span>선수 ${i + 1}</span><b>${p ? '#' + e(p.car) : ''}</b></div><h3 title="${p ? e(p.name) : ''}">${p ? e(p.name) : r ? '빈 레인' : '출발 대기'}</h3><div class="lane-time ${time === 'DNF' ? 'dnf' : ''}">${p ? time === null ? '<span class="ready-label">READY</span>' : fmt(time) : '<span class="ready-label">—</span>'}</div><p>${p ? time === 'DNF' ? '미완주 · 다음 기회도 힘차게!' : display.run === 1 ? `1차 <b>${fmt(p.times[0])}</b>` : time === null ? '모두 함께 응원해 주세요' : '멋진 도전, 잘했어요!' : r ? '이번 조는 쉬어갑니다' : '나의 도전이 시작되는 곳'}</p></div>${carCaption(p)}</article>`;
   }).join('')}</div></section>`;
 }
 function podium(list) {
@@ -83,7 +83,7 @@ function render() {
   $('#screen').innerHTML = hero(d, r, display, leader, winner) + (winner ? podium(list) : raceCards(d, r, display, list));
   const next = r?.groups[display.heat + 1];
   $('#ticker-label').textContent = winner ? 'WELL DONE!' : next ? 'UP NEXT' : 'CHEER UP!';
-  $('#ticker-text').textContent = winner ? '끝까지 도전한 모든 친구가 오늘의 주인공입니다!' : next ? `다음 ${display.heat + 2}조  ·  ${next.map(id => { const p = d.participants.find(p => p.id === id); return `#${p.car} ${p.name}`; }).join('  /  ')}` : '작은 자동차에 담긴 커다란 꿈. 함께 응원해 주세요!';
+  $('#ticker-text').textContent = winner ? '끝까지 도전한 모든 친구가 오늘의 주인공입니다!' : next ? `다음 ${display.heat + 2}조  ·  ${next.filter(Boolean).map(id => { const p = d.participants.find(p => p.id === id); return `#${p.car} ${p.name}`; }).join('  /  ')}` : '작은 자동차에 담긴 커다란 꿈. 함께 응원해 주세요!';
   renderBoard();
 }
 connect(next => { state = next; render(); });
