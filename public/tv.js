@@ -21,6 +21,7 @@ document.addEventListener('error', event => {
 
 function carCaption(p) {
   const name = p?.carName || (p ? '자동차 이름 미등록' : '출발을 기다려요');
+  if (p?.carPhotoUrl) return `<div class="car-caption" title="${e(name)}"><img class="car-thumbnail" src="${e(p.carPhotoUrl)}" alt=""><span>${e(name)}</span></div>`;
   return `<div class="car-caption ${p?.carName ? '' : 'unnamed'}" title="${e(name)}"><svg viewBox="0 0 24 16" aria-hidden="true"><path d="m5 2-2 6H1v6h2v2h3v-2h12v2h3v-2h2V8h-2l-2-6zm1.5 2h11L19 8H5zM4 10h3v2H4zm13 0h3v2h-3z"/></svg><span>${e(name)}</span></div>`;
 }
 
@@ -55,16 +56,22 @@ function podium(list) {
   const valid = list.filter(p => Number.isFinite(p.best));
   return `<section class="race-deck podium-deck"><div class="deck-heading"><h2>모두가 빛난 오늘의 레이스</h2><span class="deck-note">FINAL RESULTS</span></div><div class="podium-grid">${valid.slice(0, 3).map((p, i) => `<article class="podium-card split-card podium-${i + 1}">${profile(p)}<div class="card-details"><span class="medal">${star}<b>${i + 1}</b></span><small>${['GOLD', 'SILVER', 'BRONZE'][i]} · #${e(p.car)}</small><h3>${e(p.name)}</h3><strong>${fmt(p.best)}<small>초</small></strong></div>${carCaption(p)}</article>`).join('')}</div></section>`;
 }
+function rankCard(p) {
+  if (!p) return '<article class="ranking-row empty-ranking"><span>✦</span><p>다음 주인공을 기다려요</p></article>';
+  const tier = p.rank && p.rank <= 3 ? p.rank : 'base';
+  return `<article class="ranking-row rank-tier-${tier} ${!p.rank ? 'unranked' : ''}"><div class="rank-badge">${p.rank ? `<b>${p.rank}</b><small>위</small>` : '<small>대기</small>'}</div><div class="rank-main"><h3 title="${e(p.name)}">${e(p.name)}</h3></div><div class="rank-result ${p.best >= 10000 ? 'long-time' : ''}"><strong>${Number.isFinite(p.best) ? fmt(p.best) : p.complete ? 'DNF' : '대기'}</strong>${Number.isFinite(p.best) ? '<small>초</small>' : ''}${p.tieBreak != null ? `<span class="rank-tiebreak">재경기 ${fmt(p.tieBreak)}</span>` : ''}</div><div class="rank-photo">${profile(p)}</div><div class="rank-car"><span>#${e(p.car)}</span>${carCaption(p)}</div></article>`;
+}
+
 function renderBoard() {
   if (!state) return;
   const { d, r, display, list } = context();
   const final = Boolean(r?.winnerId), rankingMode = display.mode === 'ranking' && !final;
-  const boardList = r ? list : d.participants.map(p => ({ ...p, best: Infinity, rank: null, complete: false }));
+  const boardList = list.filter(p => p.complete);
   const pages = rankingMode ? Math.max(1, Math.ceil(boardList.length / PAGE_SIZE)) : 1;
   page %= pages;
   const offset = page * PAGE_SIZE, completed = list.filter(p => p.complete).length;
   const slots = Array.from({ length: final ? 4 : PAGE_SIZE }, (_, i) => boardList[offset + i]);
-  $('#leaderboard').innerHTML = `<header class="board-heading"><div class="board-eyebrow"><span>${final ? 'FINAL RESULTS' : 'LIVE LEADERBOARD'}</span><span class="board-live">${final ? 'FINAL' : 'LIVE'}</span></div><h2>${final ? '최종 순위' : r ? rankingMode ? '전체 순위' : '실시간 순위' : '출발을 기다려요'}</h2><div class="board-sub"><span>${d.name} · ${r?.name || '참가자 등록'}</span><b>${r ? `${completed} / ${list.length}명 완료` : `${d.participants.length}명 참가`}</b></div><progress value="${completed}" max="${Math.max(1, list.length)}" aria-label="기록 입력 완료"></progress></header><div class="rank-grid ${final ? 'final-grid' : ''}">${slots.map(p => p ? `<article class="rank-tile split-card ${p.rank === 1 ? 'first-place' : ''} ${!p.rank ? 'unranked' : ''}">${profile(p)}<div class="card-details"><div class="tile-top"><span class="position">${p.rank ? `<b>${p.rank}</b>위` : p.complete ? 'DNF' : '대기'}</span><span class="car-number">#${e(p.car)}</span>${p.rank === 1 ? star : ''}</div><h3 title="${e(p.name)}">${e(p.name)}</h3><div class="tile-time">${Number.isFinite(p.best) ? fmt(p.best) + '<small>초</small>' : p.complete ? '미완주' : '기록 대기'}</div>${p.tieBreak !== null && p.tieBreak !== undefined ? `<small class="tie-note">재경기 ${fmt(p.tieBreak)}</small>` : ''}</div>${carCaption(p)}</article>` : '<article class="rank-tile empty-tile"><span>✦</span><p>다음 주인공을<br>기다리고 있어요</p></article>').join('')}</div><footer class="board-footer"><div class="advance-note">${final ? '<b>모든 참가자에게 큰 박수를!</b>' : r?.advance ? `<span>NEXT ROUND</span><b>상위 <em>${r.advance}명</em> 다음 라운드 진출</b>` : '<b>함께 달리고, 함께 응원해요!</b>'}</div><div class="board-legend"><span>두 번 중 <b>더 빠른 기록</b> 기준${final ? '' : ' · 잠정 순위'}</span><span>${rankingMode ? `${page + 1} / ${pages}` : final ? 'FINAL' : r ? 'TOP 8' : 'READY'}</span></div></footer>`;
+  $('#leaderboard').innerHTML = `<header class="board-heading"><div class="board-eyebrow"><span>${final ? 'FINAL RESULTS' : 'LIVE LEADERBOARD'}</span><span class="board-live">${final ? 'FINAL' : 'LIVE'}</span></div><h2>${final ? '최종 순위' : r ? rankingMode ? '전체 순위' : '실시간 순위' : '출발을 기다려요'}</h2><div class="board-sub"><span>${d.name} · ${r?.name || '참가자 등록'}</span><b>${r ? `${completed} / ${list.length}명 완료` : `${d.participants.length}명 참가`}</b></div><progress value="${completed}" max="${Math.max(1, list.length)}" aria-label="기록 입력 완료"></progress></header><div class="rank-grid ${final ? 'final-grid' : ''}">${slots.map(rankCard).join('')}</div><footer class="board-footer"><div class="advance-note">${final ? '<b>모든 참가자에게 큰 박수를!</b>' : r?.advance ? `<span>NEXT ROUND</span><b>상위 <em>${r.advance}명</em> 다음 라운드 진출</b>` : '<b>함께 달리고, 함께 응원해요!</b>'}</div><div class="board-legend"><span>두 번 중 <b>더 빠른 기록</b> 기준${final ? '' : ' · 잠정 순위'}</span><span>${rankingMode ? `${page + 1} / ${pages}` : final ? 'FINAL' : r ? 'TOP 8' : 'READY'}</span></div></footer>`;
 }
 function render() {
   const { display, d, r, list } = context();

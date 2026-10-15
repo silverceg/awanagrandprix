@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>진행자 · 어와나 그랑프리</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css"><script type="module" src="/host.js"></script></head>
 <body>
-<header class="topbar"><a class="brand" href="/host"><span class="brand-mark">A</span><span>AWANA <b>GRAND PRIX</b><small>RACE CONTROL · 진행자</small></span></a><div class="top-actions"><span id="connection" class="connection">● 연결 중</span><a class="button ghost" href="/tv" target="_blank" rel="noopener">관객 화면 ↗</a><button id="logout" class="ghost" hidden>로그아웃</button></div></header>
+<header class="topbar"><a class="brand" href="/host"><span class="brand-mark">A</span><span>AWANA <b>GRAND PRIX</b><small>RACE CONTROL · 진행자</small></span></a><div class="top-actions"><span id="connection" class="connection">● 연결 중</span><a class="button ghost" href="/tv" target="_blank" rel="noopener">관객 화면 ↗</a><a class="button ghost" href="/leaderboard" target="_blank" rel="noopener">전체 순위 ↗</a><button id="logout" class="ghost" hidden>로그아웃</button></div></header>
 <main>
-<section id="login" class="login card"><span class="eyebrow">READY TO RACE</span><h1>오늘의 레이스를<br>시작해 볼까요?</h1><p>진행자 비밀번호로 로그인하세요.<br>관객 노트북은 위의 관객 화면을 열면 됩니다.</p><form id="login-form"><label for="pin">진행자 비밀번호</label><input type="password" id="pin" autocomplete="current-password" required minlength="8"><button class="primary" type="submit">진행자 입장 →</button></form></section>
+<section id="login" class="login card" hidden><span class="eyebrow">READY TO RACE</span><h1>오늘의 레이스를<br>시작해 볼까요?</h1><p>진행자 비밀번호로 로그인하세요.<br>관객 노트북은 위의 관객 화면을 열면 됩니다.</p><form id="login-form"><label for="pin">진행자 비밀번호</label><input type="password" id="pin" autocomplete="current-password" required minlength="8"><button class="primary" type="submit">진행자 입장 →</button></form></section>
 <div id="app" hidden></div>
 <div id="message" role="status" aria-live="polite" hidden></div>
 </main><footer>4 LANES · 2 RUNS · BEST TIME WINS <span>두 번 중 더 빠른 기록으로 순위 결정</span></footer>
