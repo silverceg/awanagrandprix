@@ -22,14 +22,14 @@ test('최고 기록 한 번으로 순위 결정 (평균과 반대인 사례)', (
   assert.equal(bestOf(['DNF', 'DNF']), Infinity);
   assert.equal(bestOf([2000, null]), null);
 });
-test('40~45명 및 18~20명 편성: 중복 없이 3~4명, 2회 다른 레인', () => {
+test('40~45명 및 18~20명 편성: 중복 없이 3~4명, 2회 같은 선수 순서', () => {
   for (const count of [40, 41, 42, 43, 44, 45, 18, 19, 20]) {
     const f = fixture(count, count > 20 ? 'awana' : 'open'), r = currentRound(f.d);
     assert.equal(new Set(r.groups.flat()).size, count);
     assert.ok(r.groups.every(g => g.length >= 3 && g.length <= 4));
     r.groups.forEach((group, h) => group.forEach(id => {
       const lane1 = lanesFor(r, h, 0).indexOf(id), lane2 = lanesFor(r, h, 1).indexOf(id);
-      assert.equal(lane2, (lane1 + 2) % 4);
+      assert.equal(lane2, lane1);
     }));
   }
 });

@@ -28,13 +28,13 @@ test('혼합 번호 붙여넣기: 직접 지정한 번호를 먼저 예약하고
   const s=freshState();mutate(s,'participants',{division:'open',entries:parseRoster('번호\t이름\n\t자동\n1\t지정\n\t다음')});
   assert.deepEqual(s.divisions.open.participants.map(p=>p.car),['2','1','3']);
 });
-test('수동 조 편성: 40/18명 중복 없이 배치, 2차 레인 교체, 변경 후 백업 복원',()=>{
+test('수동 조 편성: 40/18명 중복 없이 배치, 2차 선수 순서 유지, 변경 후 백업 복원',()=>{
   const s=freshState();
   for(const [division,count] of [['awana',40],['open',18]]){
     const ids=seed(s,division,count),groups=orderedGroups(ids.reverse());
     assert.ok(groups.every(g=>g.length>=3&&g.length<=4));
     mutate(s,'start',{division,groups});const r=s.divisions[division].rounds[0];
-    assert.deepEqual(r.groups,groups);assert.deepEqual(lanesFor(r,0,1),[groups[0][2],groups[0][3],groups[0][0],groups[0][1]]);
+    assert.deepEqual(r.groups,groups);assert.deepEqual(lanesFor(r,0,1),groups[0]);
     const savedResults=structuredClone(r.results),swapped=groups.map(g=>[...g]);
     [swapped[0][0],swapped[1][1]]=[swapped[1][1],swapped[0][0]];
     mutate(s,'groups',{division,roundId:r.id,groups:swapped});

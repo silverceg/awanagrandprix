@@ -23,7 +23,7 @@ test('진출자는 최고 기록으로 선발하되 기존 조·1차 레인 순�
       assert.deepEqual(old.results,oldRecords);
       assert.deepEqual(d.participants,originalParticipants); // Sticker numbers never change.
       for(const rec of Object.values(next.results))assert.deepEqual(rec,{times:[null,null],scoreMs:0,tieBreak:null});
-      for(let h=0;h<next.groups.length;h++)for(const id of next.groups[h])assert.equal(lanesFor(next,h,1).indexOf(id),(lanesFor(next,h,0).indexOf(id)+2)%4);
+      for(let h=0;h<next.groups.length;h++)for(const id of next.groups[h])assert.equal(lanesFor(next,h,1).indexOf(id),lanesFor(next,h,0).indexOf(id));
     }
   }
 });
