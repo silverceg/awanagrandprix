@@ -1,4 +1,4 @@
-import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups, numberedGroups, clearGroupSlot } from './common.js';
+import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups, numberedGroups, clearGroupSlot, numberDraw } from './common.js';
 
 let state, revision, division = 'awana', heat = 0, run = 0, history = -1, loggedIn = false, dirty = false, saving = false;
 let passwordRequired = true;
@@ -27,6 +27,7 @@ function render() {
   <div class="stats"><div><small>현재 라운드</small><strong>${active?.name || '참가자 등록'}</strong></div><div><small>참가 인원</small><strong>${active?.entrantIds.length ?? d.participants.length}<em>명</em></strong></div><div><small>기록 입력 완료</small><strong>${done}<em>/ ${active?.entrantIds.length || 0}명</em></strong></div><div><small>${active?.advance === 0 ? '결승 상태' : '다음 라운드'}</small><strong>${active ? active.advance ? `상위 ${active.advance}위` : active.status === 'completed' ? '최종 확정' : '우승 결정' : `상위 ${nextCount(division)}위`}</strong></div></div>
   <div id="stale" class="notice" hidden>새 변경 사항이 있습니다. 입력 내용은 유지했습니다. <button id="refresh">최신 내용 불러오기</button></div>
   <p class="notice">부문별 경기와 기록은 따로 보관됩니다. 어와나 예선 종료 후 일반부 탭에서 예선을 시작하세요. 탭 선택만으로 TV는 바뀌지 않으며, 시작 또는 TV 표시 버튼을 누르면 전환됩니다.</p>
+  ${numberDrawPanel(d,active)}
   ${!active ? registration(d) : racePanel(d, active)}
   ${manualGroups(d, active)}
   ${roster(d)}
@@ -44,6 +45,11 @@ function registration(d) {
 function groupPlayers() {
   const d=state.divisions[division],r=current(d);
   return (r?.entrantIds || d.participants.map(p=>p.id)).map(id=>d.participants.find(p=>p.id===id));
+}
+function numberDrawPanel(d,r) {
+  if(division!=='awana')return '';
+  const draw=numberDraw(d.participants),players=draw.groups.flat().filter(Boolean);
+  return `<section class="card number-draw-panel"><div class="section-head"><div><span class="eyebrow">LIVE GROUP DRAW</span><h2>번호로 만나는 우리 조</h2></div><a class="button primary" href="/draw" target="_blank" rel="noopener">조 추첨 관객 화면 ↗</a></div><p><b>1~4번 → 1조 · 5~8번 → 2조 · … · 37~40번 → 10조</b><br>관객 노트북에서 위 화면을 먼저 여세요. 아래에서 번호·이름을 등록하면 선수 카드가 해당 조로 이동합니다. 사진과 자동차 이름은 나중에 추가해도 됩니다.</p><p class="notice"><b>${draw.count} / 40명 자리 배정</b>${draw.invalid.length?` · 번호 확인 필요: ${draw.invalid.map(p=>'#'+e(p.car)+' '+e(p.name)).join(', ')}<br>1~40번을 중복 없이 입력하세요. 01번과 1번은 같은 자리입니다.`:''}</p><div class="inline-form"><label>이미 등록한 선수 공개<select id="draw-player">${players.map(p=>`<option value="${p.id}">#${e(p.car)} ${e(p.name)} → ${Math.floor((Number(p.car)-1)/4)+1}조</option>`).join('')}</select></label><button id="draw-reveal" class="ghost" ${!players.length?'disabled':''}>선택 선수 입장 장면 재생</button>${!r?`<button id="start-number-draw" class="primary" ${draw.count!==40||draw.invalid.length?'disabled':''}>이 10개 조로 예선 시작</button>`:''}</div><p class="hint">공개 화면은 저장된 번호로 조를 보여 줍니다. 예선은 40명 등록 후 ‘이 10개 조로 예선 시작’을 눌러 시작합니다. 일반부는 기존 수동 편성을 사용합니다.</p></section>`;
 }
 function groupGrid(groups,players) {
   return groups.map((group,h)=>`<fieldset><legend>${h+1}조 · ${group.filter(Boolean).length}명</legend>${Array.from({length:4},(_,lane)=>{const id=group[lane]||'';return `<label>${lane+1}레인<select name="slot-${h}-${lane}" data-group-slot data-previous="${id}"><option value="" ${!id?'selected':''}>빈 레인</option>${players.map(p=>`<option value="${p.id}" ${p.id===id?'selected':''}>#${e(p.car)} ${e(p.name)}</option>`).join('')}</select></label>`;}).join('')}<button type="button" class="small ghost" data-remove-group="${h}">이 조 없애기</button></fieldset>`).join('');
@@ -213,6 +219,8 @@ app.addEventListener('click', async event => {
   try {
   const b = event.target.closest('button'); if (!b || saving || mediaBusy) return;
   if(b.id==='preview-roster'){rosterPreview();return;}
+  if(b.id==='draw-reveal' && clean()){await action('draw-reveal',{id:$('#draw-player').value});return;}
+  if(b.id==='start-number-draw' && clean()){await action('start-number-draw',{},()=>{heat=run=0;history=-1;});return;}
   if(b.id==='number-groups'){const players=groupPlayers();$('.manual-grid').innerHTML=groupGrid(numberedGroups(players),players);dirty=true;updateGroupSummary();return;}
   if(b.id==='add-group' || b.dataset.removeGroup!==undefined){
     const groups=readGroups(),players=groupPlayers();

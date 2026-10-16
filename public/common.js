@@ -1,4 +1,5 @@
 export const $ = selector => document.querySelector(selector);
+export { numberDraw } from './draw-model.js';
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const fmt = value => value === 'DNF' ? 'DNF' : value == null ? '—' : (value / 1000).toFixed(3);
 export const current = d => d.rounds.at(-1);
