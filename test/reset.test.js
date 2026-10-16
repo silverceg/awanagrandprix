@@ -60,9 +60,19 @@ test('초기화 API 권한·확인문구·충돌 방지 및 TV 갱신',async()=>
     assert.equal((await post({...body,revision:0})).status,409);
     assert.equal((await post({...body,confirmation:''})).status,400);
     assert.equal((await fetch(url+'/api/reset-backup',{headers:{cookie}})).status,404);
-    reader=(await fetch(url+'/api/events')).body.getReader();await reader.read();
+    reader=(await fetch(url+'/api/events')).body.getReader();
+    // A network read can contain only part of an SSE event.
+    let pending='';const decoder=new TextDecoder();
+    const readEvent=async()=>{
+      while(!pending.includes('\n\n')){
+        const chunk=await reader.read();assert.equal(chunk.done,false);
+        pending+=decoder.decode(chunk.value,{stream:true});
+      }
+      const end=pending.indexOf('\n\n'),event=pending.slice(0,end);pending=pending.slice(end+2);return event;
+    };
+    await readEvent();
     assert.equal((await post(body)).status,200);
-    const update=new TextDecoder().decode((await reader.read()).value);assert.match(update,/lastReset/);
+    const update=await readEvent();assert.match(update,/lastReset/);
     assert.equal((await fetch(url+'/api/reset-backup')).status,401);
     const file=await fetch(url+'/api/reset-backup',{headers:{cookie}});assert.equal(file.status,200);
     assert.deepEqual((await file.json()).state,before);
