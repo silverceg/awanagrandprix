@@ -77,7 +77,7 @@ function render() {
       return `<div class="member ${show?'':'empty'} ${show&&p.id===recent?'new':''}" data-number="${number}"><span class="ticket">${String(number).padStart(2,'0')}</span>${show?`${portrait(p)}${identity(p)}${carPhoto(p)}`:'<strong>친구를 기다려요</strong>'}</div>`;
     }).join('')}</div></article>`;
   }).join('');
-  $('#draw-message').textContent=draw.invalid.length?`번호 확인이 필요한 선수 ${draw.invalid.length}명 · 진행자에게 알려 주세요`:shown===40?'40명 모두 우리 조에 도착했어요!':running?'우리 조로 이동하는 중이에요!':'번호와 이름을 등록하면 우리 조로 출발해요';
+  $('#draw-message').textContent=draw.invalid.length?`번호 확인이 필요한 선수 ${draw.invalid.length}명 · 진행자에게 알려 주세요`:shown===40?'40명 모두 우리 조에 도착했어요!':running?'우리 조로 이동하는 중이에요!':'뽑은 번호를 지정하면 우리 조로 출발해요';
 }
 function validPlayer(id) {return numberDraw(state.divisions.awana.participants).groups.flat().find(p=>p?.id===id);}
 async function play() {
@@ -143,3 +143,4 @@ $('#fullscreen').addEventListener('click',()=>{
   task?.catch(()=>{ $('#draw-message').textContent='브라우저의 전체 화면 기능을 사용하세요.'; });
 });
 connect(accept);
+
