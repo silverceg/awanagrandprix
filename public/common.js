@@ -102,3 +102,19 @@ export function connect(onState) {
   stream.onerror = () => { status.textContent = '● 연결 끊김 · 재연결 중'; status.classList.add('offline'); };
   return stream;
 }
+
+// Match only an unambiguous complete name or an assigned sticker number.
+export function matchPhotoFile(filename,players,defaultField='photoData') {
+  let stem=filename.replace(/\.[^.]+$/,'').normalize('NFC').trim(),field=defaultField;
+  const suffix=stem.match(/[_\s-]+(자동차|차량|car|선수|프로필|profile)$/i);
+  if(suffix){field=/^(자동차|차량|car)$/i.test(suffix[1])?'carPhotoData':'photoData';stem=stem.slice(0,suffix.index).trim();}
+  const normalized=value=>String(value).normalize('NFC').trim().toLocaleLowerCase('ko');
+  let matches=players.filter(p=>normalized(p.name)===normalized(stem));
+  if(!matches.length && /^#?\d+$/.test(stem))matches=players.filter(p=>!p.drawPending&&/^\d+$/.test(p.car)&&Number(p.car)===Number(stem.replace('#','')));
+  return {id:matches.length===1?matches[0].id:'',field};
+}
+export function photoConflicts(items) {
+  const seen=new Map(),conflicts=new Set();
+  items.forEach((p,i)=>{if(!p.id||p.saved||p.error)return;const key=p.id+':'+p.field;if(seen.has(key)){conflicts.add(seen.get(key));conflicts.add(i);}else seen.set(key,i);});
+  return conflicts;
+}

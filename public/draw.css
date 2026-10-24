@@ -46,3 +46,23 @@ header{display:flex;justify-content:space-between;align-items:center;gap:2cqw}.e
 @keyframes finish-spark{0%{opacity:1;transform:translate(0,0) scale(.4)}75%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--turn)) scale(.6)}}
 @media(prefers-reduced-motion:reduce){.reveal::before,.reveal-card::before,.arrival-burst{display:none}}
 @media(max-width:700px) and (orientation:portrait){.status{grid-template-columns:1fr auto}.status button#fullscreen{grid-column:2;grid-row:1/3}.status button#sound-toggle{grid-column:1/3;grid-row:3;font-size:2.6cqw;padding:7px 10px;border-radius:20px}.reveal-driver strong{font-size:5.5cqw}.arrival-burst i{width:5px;height:8px}}
+
+/* Race-night reveal: a gradual build, a quiet beat, then the winning team. */
+.status .sound-level{grid-column:2;grid-row:3;font-size:.65cqw;color:#cde6ff;display:flex;align-items:center;gap:.35cqw;justify-content:flex-end}.sound-level input{width:5cqw;accent-color:#ffe24e}
+.reveal.charging{background:radial-gradient(ellipse at center,#114a8cd9,#020c23f5)}
+.reveal.charging .reveal-card{border-color:#7dcaff;box-shadow:0 0 8cqw #238cff66}
+.reveal.charging::after{content:'';position:absolute;inset:-50%;pointer-events:none;background:conic-gradient(from 0deg,transparent 0deg,#78bfff22 15deg,transparent 30deg,transparent 160deg,#ffe24e18 180deg,transparent 200deg);animation:draw-spotlight 5s linear infinite;z-index:-1}
+.start-sequence{height:20cqh;display:grid;justify-items:center;align-content:center;gap:1cqh}.launch-label{font-size:1.25cqw;color:#c7dfff}.start-sequence strong{font-family:Lilita,sans-serif;font-size:3cqw;letter-spacing:.12em;color:white}
+.start-lights{display:flex;gap:1cqw;padding:1cqh 1cqw;background:#041a3b;border:1px solid #a0d0ff55;border-radius:3cqw}
+.start-lights i{width:1.65cqw;height:1.65cqw;border-radius:50%;background:#243b5b;box-shadow:inset 0 .15cqw .3cqw #0008;animation:start-lamp .25s ease-out .15s forwards}
+.start-lights i:nth-child(2){animation-delay:.95s}.start-lights i:nth-child(3){animation-delay:1.75s}
+.charge-track{height:.4cqh;width:60%;background:#ffffff1a;border-radius:1cqw;overflow:hidden}.charge-track span{display:block;height:100%;background:linear-gradient(90deg,#3ea9ff,#ffe34b);transform-origin:left;animation:charge-up 2.7s cubic-bezier(.4,0,.7,1) both}
+.reveal.revealed .reveal-card{border-color:#ffe34b;box-shadow:0 0 0 .6cqw #ffdd3a20,0 0 9cqw #ffdd3a66;animation:team-impact .6s cubic-bezier(.15,1.3,.4,1)}
+.revealed .result{height:20cqh;flex-direction:column;gap:.7cqh}.revealed .result>span{display:flex;align-items:center;gap:.6cqw}.revealed .result small{font-size:1.2cqw;color:white}.revealed .result em{font-style:normal;font-size:1.25cqw;color:#fff2aa}.revealed .result b{font-size:6.5cqw}
+.arrival-burst i{animation:none}.spark-0{background:#ffe34b}.spark-1{background:#69e2ff}.spark-2{background:#fff}.spark-3{background:#ff9d40}
+@keyframes start-lamp{to{background:#ffcc37;box-shadow:0 0 1.4cqw #ffcc3799,inset 0 0 .3cqw #fff8}}
+@keyframes charge-up{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes team-impact{from{transform:scale(.92);filter:brightness(1.3)}to{transform:scale(1);filter:brightness(1)}}
+@keyframes draw-spotlight{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.reveal.charging::after{display:none}.start-lights i{background:#ffcc37}.charge-track span{transform:none}}
+@media(max-width:700px) and (orientation:portrait){.status .sound-level{grid-column:1/3;grid-row:4;font-size:2.4cqw}.sound-level input{width:18cqw}.start-sequence,.revealed .result{height:150px}.launch-label,.revealed .result small,.revealed .result em{font-size:3cqw}.start-sequence strong{font-size:8cqw}.start-lights i{width:5cqw;height:5cqw}.revealed .result b{font-size:16cqw}.charge-track{height:4px}}

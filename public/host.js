@@ -1,12 +1,13 @@
-import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups, numberedGroups, clearGroupSlot, numberDraw, isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, groupNumber, legacyOrder } from './common.js';
+import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups, numberedGroups, clearGroupSlot, numberDraw, isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, groupNumber, legacyOrder, matchPhotoFile, photoConflicts } from './common.js';
 
 let state, revision, division = 'awana', heat = 0, run = 0, history = -1, loggedIn = false, dirty = false, saving = false;
 let passwordRequired = true;
 let pendingState = null;
 let editorId = null, photoDraft = {}, mediaBusy = 0;
+let bulkMode=false, bulkPhotos=[], modalReturn=null;
 const app = $('#app');
 function notify(text, bad = false) {
-  const box = $('#message'); box.textContent = text; box.className = bad ? 'error' : 'success'; box.hidden = false;
+  const box = $('#dialog-message') || $('#message'); box.textContent = text; box.className = bad ? 'error' : 'success'; box.hidden = false;
   clearTimeout(notify.timer); notify.timer = setTimeout(() => { box.hidden = true; }, bad ? 12000 : 5000);
 }
 function clean() { return !dirty || confirm('입력 중인 내용이 있습니다. 저장하지 않고 이동할까요?'); }
@@ -17,6 +18,7 @@ function render() {
     if (pendingState.revision > state.revision) state = pendingState;
     pendingState = null;
   }
+  const rosterSearch=$('#roster-search')?.value || '';
   revision = state.revision; dirty = false;
   const d = state.divisions[division], active = current(d), r = history < 0 ? active : d.rounds[history];
   if (active) heat = Math.min(heat, active.groups.length - 1);
@@ -34,7 +36,8 @@ function render() {
   ${r ? `<section class="card"><div class="section-head"><div><span class="eyebrow">LEADERBOARD</span><h2>${history < 0 ? '현재 순위' : '이전 라운드 기록'}</h2></div><label>기록 보기 <select id="history"><option value="-1" ${history < 0 ? 'selected' : ''}>현재 · ${active.name}</option>${d.rounds.slice(0, -1).map((old, i) => `<option value="${i}" ${history === i ? 'selected' : ''}>${old.name} · 보존 기록</option>`).join('')}</select></label></div><p class="hint">${isFour(r)?'각 레인 기록과 네 번 중 최고 기록입니다. 한 번이라도 기록이 있으면 잠정 순위에 반영되며, 최고 기록 동점은 공동 순위입니다.':'이전 규칙으로 저장된 기록입니다. 새 경기는 위의 4회 경기 전환을 이용하세요.'}</p><div class="table-scroll">${ranking(d, r)}</div></section>` : ''}
   <details class="card"><summary>행사 이름 및 운영 기록</summary><form id="title-form" class="inline-form"><label>행사 이름<input name="title" value="${e(state.title)}" maxlength="60" required></label><button class="ghost">이름 저장</button></form><button id="audit" class="ghost">최근 변경 내역 보기</button><div id="audit-list"></div></details>
   ${backupPanel()}
-  <details class="card reset-panel"><summary>리허설 종료 · 경기 기록 초기화</summary><p>어와나와 일반부의 모든 라운드·조 편성·주행 기록·순위를 초기화합니다. 참가자 이름, 스티커 번호, 자동차 이름과 사진 정보는 유지합니다. 초기화 후 두 부문 조를 다시 편성하면 본선 1라운드 1조부터 시작합니다.</p><p class="hint">초기화 전 기록은 자동으로 백업합니다. 백업에 실패하면 초기화하지 않습니다. 직접 보관하려면 먼저 <a href="/api/export">전체 기록 JSON 다운로드</a>를 누르세요.</p><form id="reset-form" class="inline-form"><label>확인 문구<input name="confirmation" placeholder="기록 초기화" autocomplete="off" pattern="기록 초기화" required></label><button class="danger" type="submit">두 부문 경기 기록 초기화</button></form>${state.lastReset ? '<p class="hint">최근 초기화·복원 전 기록: <a href="/api/reset-backup">백업 JSON 다운로드</a></p>' : ''}</details>`;
+  <details class="card reset-panel"><summary>리허설 종료 · 경기 기록 초기화</summary><p>어와나와 일반부의 모든 라운드·조 편성·주행 기록·순위를 초기화합니다. 참가자 이름, 스티커 번호, 자동차 이름과 사진 정보는 유지합니다. 초기화 후 두 부문 조를 다시 편성하면 본선 1라운드 1조부터 시작합니다.</p><p class="hint">초기화 전 기록은 자동으로 백업합니다. 백업에 실패하면 초기화하지 않습니다. 직접 보관하려면 먼저 <a href="/api/export">전체 기록 JSON 다운로드</a>를 누르세요.</p><form id="reset-form" class="inline-form"><label>확인 문구<input name="confirmation" placeholder="기록 초기화" autocomplete="off" pattern="기록 초기화" required></label><button class="danger" type="submit">두 부문 경기 기록 초기화</button></form>${state.lastReset ? '<p class="hint">최근 초기화·복원 전 기록: <a href="/api/reset-backup">백업 JSON 다운로드</a></p>' : ''}</details><dialog id="roster-dialog" class="roster-dialog" aria-labelledby="dialog-title"></dialog>`;
+  if ($('#roster-search')) { $('#roster-search').value=rosterSearch; filterRoster(rosterSearch); }
 }
 function backupPanel() {
   return `<details class="card"><summary>다른 노트북에서 사용 · 명단과 사진 백업 / 복원</summary><p>같은 서버 주소의 <b>/host</b>에 접속하면 명단·사진·기록이 그대로 보입니다. 각 노트북의 localhost는 서로 다른 저장소입니다. 서버 노트북을 바꿀 때는 아래 백업을 옮겨 복원하세요.</p><p><a class="button ghost" href="/api/export">명단·사진·모든 기록 백업 ↓</a></p><p class="hint">복원하면 두 부문의 현재 명단과 기록을 선택한 백업으로 교체합니다. 교체 전 데이터는 자동 백업합니다. CSV가 아닌 전체 백업 JSON을 선택하세요.</p><form id="restore-form" class="inline-form"><label>백업 파일<input id="backup-file" name="backup" type="file" accept=".json,application/json" required></label><label>확인 문구<input name="confirmation" placeholder="백업 복원" pattern="백업 복원" required autocomplete="off"></label><button class="primary">백업 가져오기</button></form>${state.lastReset ? '<a href="/api/reset-backup">최근 초기화·복원 직전 백업 다운로드</a>' : ''}</details>`;
@@ -87,8 +90,94 @@ function preview(src, label) {
 }
 function roster(d) {
   if (!d.participants.length) return '';
-  const p = d.participants.find(p=>p.id===editorId);
-  return `<section class="card roster"><div class="section-head"><div><span class="eyebrow">DRIVER GARAGE</span><h2>참가자 명단 · ${d.participants.length}명</h2></div><label>이름 / 번호 검색<input id="roster-search" type="search" placeholder="찾을 이름 또는 번호"></label></div><p class="hint">참가자 카드의 ‘정보·사진 수정’을 누르세요. 사진은 선택 후 저장해야 다른 노트북과 TV에도 반영됩니다.</p>${p ? `<div id="participant-editor" class="participant-editor"><h3>${p.drawPending?'추첨 대기':'#'+e(p.car)} ${e(p.name)} 정보 수정</h3><form id="participant-edit-form"><div class="editor-fields"><label>선수 이름<input name="name" value="${e(p.name)}" maxlength="40" required></label><label>스티커 번호<input name="car" value="${p.drawPending?'':e(p.car)}" maxlength="12" ${p.drawPending?'readonly placeholder="추첨할 때 위에서 지정"':'required'}></label><label>자동차 이름<input name="carName" value="${e(p.carName || '')}" maxlength="24" placeholder="나중에 입력해도 됩니다"></label></div><div class="photo-fields">${[['photoData','photoUrl','선수 사진'],['carPhotoData','carPhotoUrl','자동차 사진']].map(([input,field,label])=>`<div class="photo-field"><div id="preview-${input}" class="photo-preview ${field==='carPhotoUrl'?'car-photo':''}">${preview(p[field],label)}</div><label>${label}<input type="file" accept="image/jpeg,image/png,image/webp" data-photo="${input}" aria-label="${label} 선택"></label><button class="small ghost" type="button" data-remove-photo="${input}">사진 지우기</button></div>`).join('')}</div><p class="hint">JPG·PNG·WebP 사진을 선택하세요. 자동으로 크기를 줄여 저장합니다. 선수 사진은 정사각형 중앙 기준, 자동차는 전체 모습이 보이게 표시합니다. 사진이 없어도 등록할 수 있습니다.</p><div class="form-actions"><button class="primary" id="save-participant">정보·사진 저장</button><button type="button" id="cancel-edit" class="ghost">닫기</button></div></form></div>` : ''}<div class="roster-grid">${d.participants.map(p=>`<article class="roster-card" data-roster-name="${e((p.name+' '+p.car+' '+p.carName).toLowerCase())}"><div class="roster-photos"><div class="mini-profile">${preview(p.photoUrl,'선수 사진')}</div><div class="mini-car">${preview(p.carPhotoUrl,'자동차 사진')}</div></div><div class="roster-info"><small>${p.drawPending?'번호 추첨 대기':'스티커 #'+e(p.car)}</small><h3>${e(p.name)}</h3><p>${e(p.carName || '자동차 이름을 추가해 주세요')}</p><button class="small ghost" data-edit="${p.id}">정보·사진 수정</button>${!current(d)?` <button class="small ghost" data-delete="${p.id}">삭제</button>`:''}</div></article>`).join('')}</div></section>`;
+  return `<section class="card roster"><div class="section-head"><div><span class="eyebrow">DRIVER GARAGE</span><h2>참가자 명단 · ${d.participants.length}명</h2></div><label>이름 / 번호 검색<input id="roster-search" type="search" placeholder="찾을 이름 또는 번호"></label></div><p class="hint">참가자 카드의 ‘정보·사진 수정’을 누르세요. 사진은 선택 후 저장해야 다른 노트북과 TV에도 반영됩니다.</p><button id="bulk-photos" class="primary" type="button">사진 여러 장 한 번에 넣기</button><p class="hint">파일명이 이름 또는 번호이면 자동 연결합니다. 예: 김하늘.jpg / 김하늘_자동차.jpg. 연결 결과를 확인하고 저장하세요.</p><div class="roster-grid">${d.participants.map(p=>`<article class="roster-card" data-roster-name="${e((p.name+' '+p.car+' '+p.carName).toLowerCase())}"><div class="roster-photos"><div class="mini-profile">${preview(p.photoUrl,'선수 사진')}</div><div class="mini-car">${preview(p.carPhotoUrl,'자동차 사진')}</div></div><div class="roster-info"><small>${p.drawPending?'번호 추첨 대기':'스티커 #'+e(p.car)}</small><h3>${e(p.name)}</h3><p>${e(p.carName || '자동차 이름을 추가해 주세요')}</p><button class="small ghost" data-edit="${p.id}">정보·사진 수정</button>${!current(d)?` <button class="small ghost" data-delete="${p.id}">삭제</button>`:''}</div></article>`).join('')}</div></section>`;
+}
+function filterRoster(value) {
+  for(const card of app.querySelectorAll('[data-roster-name]')) card.hidden=!card.dataset.rosterName.includes(value.trim().toLowerCase());
+}
+function openRosterDialog(content,button) {
+  modalReturn={y:window.scrollY,button,search:$('#roster-search')?.value||''};
+  const dialog=$('#roster-dialog');dialog.innerHTML=content;
+  dialog.oncancel=event=>{event.preventDefault();closeRosterDialog();};
+  document.body.classList.add('modal-open');dialog.showModal();
+}
+function restoreRosterPosition() {
+  if(!modalReturn)return;
+  const saved=modalReturn;modalReturn=null;
+  if($('#roster-search')){$('#roster-search').value=saved.search;filterRoster(saved.search);}
+  const button=saved.button==='bulk' ? $('#bulk-photos') : $(`[data-edit="${saved.button}"]`);
+  button?.focus({preventScroll:true});window.scrollTo({top:saved.y,behavior:'instant'});
+}
+function dismissRosterDialog() {
+  $('#roster-dialog').close();document.body.classList.remove('modal-open');
+  editorId=null;photoDraft={};bulkMode=false;bulkPhotos=[];
+}
+function closeRosterDialog() {
+  if(saving||mediaBusy||!clean())return;
+  dismissRosterDialog();dirty=false;render();restoreRosterPosition();
+}
+function openEditor(id) {
+  const p=state.divisions[division].participants.find(p=>p.id===id);if(!p)return;
+  editorId=id;photoDraft={};dirty=false;
+  openRosterDialog(`<h2 id="dialog-title">${p.drawPending?'추첨 대기':'#'+e(p.car)} ${e(p.name)} 정보 수정</h2><form id="participant-edit-form"><div class="editor-fields"><label>선수 이름<input name="name" value="${e(p.name)}" maxlength="40" required></label><label>스티커 번호<input name="car" value="${p.drawPending?'':e(p.car)}" maxlength="12" ${p.drawPending?'readonly placeholder="추첨할 때 위에서 지정"':'required'}></label><label>자동차 이름<input name="carName" value="${e(p.carName || '')}" maxlength="24" placeholder="나중에 입력해도 됩니다"></label></div><div class="photo-fields">${[['photoData','photoUrl','선수 사진'],['carPhotoData','carPhotoUrl','자동차 사진']].map(([input,field,label])=>`<div class="photo-field"><div id="preview-${input}" class="photo-preview ${field==='carPhotoUrl'?'car-photo':''}">${preview(p[field],label)}</div><label>${label}<input type="file" accept="image/jpeg,image/png,image/webp" data-photo="${input}" aria-label="${label} 선택"></label><button class="small ghost" type="button" data-remove-photo="${input}">사진 지우기</button></div>`).join('')}</div><p class="hint">JPG·PNG·WebP 사진을 선택하세요. 자동으로 크기를 줄여 저장합니다. 선수 사진은 정사각형 중앙 기준, 자동차는 전체 모습이 보이게 표시합니다. 사진이 없어도 등록할 수 있습니다.</p><p id="dialog-message" role="status" hidden></p><div class="form-actions dialog-actions"><button class="primary" id="save-participant">정보·사진 저장</button><button type="button" id="cancel-edit" class="ghost">닫기</button></div></form>`,id);
+}
+async function photoData(file) {
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20000000)throw Error('20MB 이하 JPG·PNG·WebP 사진을 선택하세요.');
+  const bitmap=await createImageBitmap(file);
+  try {
+    const scale=Math.min(1,512/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+    let data=canvas.toDataURL('image/jpeg',.82);if(data.length>240000)data=canvas.toDataURL('image/jpeg',.55);
+    if(data.length>240000)throw Error('사진을 더 작은 크기로 선택해 주세요.');return data;
+  }finally{bitmap.close();}
+}
+function openBulkPhotos() {
+  bulkMode=true;bulkPhotos=[];dirty=false;
+  openRosterDialog(`<h2 id="dialog-title">사진 여러 장 한 번에 넣기</h2><p>현재 부문: <b>${e(state.divisions[division].name)}</b> · 사진을 Ctrl 또는 Shift로 여러 장 선택하세요.</p><p class="hint">김하늘.jpg → 선수 사진 / 김하늘_자동차.jpg → 자동차 사진. 번호 지정 후에는 1.jpg, 1_자동차.jpg도 가능합니다. 동명이인·일치하지 않는 파일은 직접 선수를 선택하세요.</p><label>기본 사진 종류<select id="bulk-kind"><option value="photoData">선수 사진</option><option value="carPhotoData">자동차 사진</option></select></label><label>사진 여러 장 선택<input id="bulk-files" type="file" multiple accept="image/jpeg,image/png,image/webp"></label><div id="bulk-photo-list"></div><p id="dialog-message" role="status" hidden></p><div class="dialog-actions form-actions"><button id="save-bulk-photos" class="primary" disabled>연결한 사진 저장</button><button id="cancel-edit" class="ghost" type="button">닫기</button></div>`,'bulk');
+}
+function renderBulkPhotos() {
+  const players=state.divisions[division].participants,conflicts=photoConflicts(bulkPhotos);
+  $('#bulk-photo-list').innerHTML=bulkPhotos.map((item,i)=>{
+    const p=players.find(p=>p.id===item.id),exists=p?.[item.field==='photoData'?'photoUrl':'carPhotoUrl'];
+    return `<div class="bulk-photo-row ${conflicts.has(i)?'conflict':''}"><div class="bulk-thumbnail">${item.data?preview(item.data,'선택한 사진'):''}</div><div><b>${e(item.file)}</b><span class="bulk-status">${e(item.saved?'저장 완료':item.error|| (conflicts.has(i)?'중복 연결: 같은 선수·종류는 한 장만 선택':item.id?(exists?'기존 사진을 교체합니다':'새 사진으로 저장'):'선수를 선택하거나 건너뛰세요'))}</span></div><label>선수<select data-bulk-person="${i}" ${item.saved||item.error?'disabled':''}><option value="">건너뛰기 / 직접 선택</option>${players.map(p=>`<option value="${p.id}" ${p.id===item.id?'selected':''}>${p.drawPending?'[추첨 대기]':'#'+e(p.car)} ${e(p.name)}</option>`).join('')}</select></label><label>사진 종류<select data-bulk-kind="${i}" ${item.saved||item.error?'disabled':''}><option value="photoData" ${item.field==='photoData'?'selected':''}>선수 사진</option><option value="carPhotoData" ${item.field==='carPhotoData'?'selected':''}>자동차 사진</option></select></label></div>`;
+  }).join('');
+  const count=bulkPhotos.filter(p=>p.id&&p.data&&!p.saved&&!p.error).length;
+  $('#save-bulk-photos').textContent=`연결한 사진 ${count}장 저장`;
+  $('#save-bulk-photos').disabled=saving||mediaBusy>0||!count||conflicts.size>0;
+}
+async function selectBulkPhotos(input) {
+  const files=[...input.files];if(!files.length)return;
+  if(files.length+bulkPhotos.length>120){notify('한 번에 최대 120장까지 선택할 수 있습니다.',true);input.value='';return;}
+  mediaBusy++;dirty=true;input.disabled=true;
+  const kind=$('#bulk-kind').value;$('#save-bulk-photos').disabled=true;
+  try {
+    for(const file of files){
+      const item={file:file.name,...matchPhotoFile(file.name,state.divisions[division].participants,kind)};
+      try{item.data=await photoData(file);}catch(error){item.error=error.message;item.id='';}
+      bulkPhotos.push(item);notify(`사진 준비 중 ${bulkPhotos.length}장`);
+    }
+  } finally {mediaBusy--;input.disabled=false;input.value='';renderBulkPhotos();notify('미리보기에서 선수와 사진 종류를 확인한 후 저장하세요.');}
+}
+async function saveBulkPhotos() {
+  if(saving||mediaBusy||photoConflicts(bulkPhotos).size)return;
+  const selected=bulkPhotos.filter(p=>p.id&&p.data&&!p.error&&!p.saved);if(!selected.length)return;
+  saving=true;
+  const controls=[...$('#roster-dialog').querySelectorAll('input,select,button')].map(el=>[el,el.disabled]);
+  for(const [el] of controls)el.disabled=true;
+  let count=0;
+  try {
+    // Fetch metadata before the batch; subsequent writes still require an exact revision.
+    state=await api('state');revision=state.revision;
+    for(const item of selected){
+      const p=state.divisions[division].participants.find(p=>p.id===item.id);
+      if(!p)throw Error('명단이 변경되었습니다. 닫고 다시 확인해 주세요.');
+      state=await api('participant-update',{revision,division,id:p.id,name:p.name,car:p.drawPending?'':p.car,carName:p.carName||'',[item.field]:item.data});
+      revision=state.revision;item.saved=true;count++;notify(`${count} / ${selected.length}장 저장 중…`);
+    }
+    dirty=bulkPhotos.some(p=>p.data&&!p.saved&&!p.error);notify(`${count}장 저장했습니다. 닫으면 명단에 반영됩니다.`);
+  } catch(error) {notify(`${count}장 저장 완료. ${error.message} 저장되지 않은 사진은 그대로 남아 있습니다.`,true);dirty=true;}
+  finally {saving=false;for(const [el,disabled] of controls)el.disabled=disabled;renderBulkPhotos();}
 }
 async function selectPhoto(input) {
   const file = input.files?.[0]; if (!file) return;
@@ -96,13 +185,7 @@ async function selectPhoto(input) {
   const owner = editorId, field = input.dataset.photo;
   mediaBusy++;dirty=true;input.disabled=true; const save=$('#save-participant');if(save)save.disabled=true;
   try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1,512/Math.max(bitmap.width,bitmap.height));
-    const canvas = document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-    const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
-    let data=canvas.toDataURL('image/jpeg',.82);
-    if(data.length>240000)data=canvas.toDataURL('image/jpeg',.55);
-    if(data.length>240000)throw Error('사진을 더 작은 크기로 선택해 주세요.');
+    const data=await photoData(file);
     if(owner!==editorId)return;
     photoDraft[field]=data;
     $('#preview-'+field).innerHTML=preview(data,field==='photoData'?'선수 사진':'자동차 사진');
@@ -112,7 +195,7 @@ async function selectPhoto(input) {
 }
 app.addEventListener('input', event => {
   if(event.target.id==='entries') $('#paste-preview').innerHTML='';
-  if(event.target.id==='roster-search') for(const card of app.querySelectorAll('[data-roster-name]')) card.hidden=!card.dataset.rosterName.includes(event.target.value.trim().toLowerCase());
+  if(event.target.id==='roster-search') filterRoster(event.target.value);
 });
 
 function followRace(){
@@ -161,7 +244,7 @@ async function action(name, body = {}, onSuccess = () => {}) {
   } finally {
     saving = false;
     for (const [el, disabled] of controls) el.disabled = disabled;
-    if (!dirty && pendingState) render();
+    if (!dirty && !editorId && !bulkMode && pendingState) render();
   }
 }
 $('#login-form').addEventListener('submit', async event => {
@@ -172,6 +255,12 @@ $('#login-form').addEventListener('submit', async event => {
 $('#logout').addEventListener('click', async () => { if (clean()) { try { await api('logout', {}); setLogin(false); } catch (err) { notify(err.message, true); } } });
 app.addEventListener('input', event => { if (event.target.closest('form')) dirty = true; });
 app.addEventListener('change', async event => {
+  if(event.target.id==='bulk-files'){await selectBulkPhotos(event.target);return;}
+  if(event.target.dataset?.bulkPerson!==undefined || event.target.dataset?.bulkKind!==undefined){
+    const i=Number(event.target.dataset.bulkPerson??event.target.dataset.bulkKind);
+    if(event.target.dataset.bulkPerson!==undefined)bulkPhotos[i].id=event.target.value;else bulkPhotos[i].field=event.target.value;
+    dirty=true;renderBulkPhotos();return;
+  }
   if (event.target.dataset?.photo) { await selectPhoto(event.target); return; }
   if (event.target.id === 'backup-file') { dirty = true; return; }
   const id = event.target.id;
@@ -208,7 +297,8 @@ app.addEventListener('submit', async event => {
   if (form.getAttribute('id') === 'single-participant-form') await action('participants', { prepareDraw:division==='awana', entries:[{name:fd.get('name'),car:fd.get('car'),carName:fd.get('carName')}] });
   if(form.getAttribute('id')==='assign-draw-form'){await action('assign-draw-number',{id:fd.get('id'),number:fd.get('number')});return;}
   if (form.getAttribute('id') === 'participant-edit-form') {
-    await action('participant-update', {id:editorId,name:fd.get('name'),car:fd.get('car'),carName:fd.get('carName'),...photoDraft}, () => {editorId=null;photoDraft={};});
+    const ok=await action('participant-update', {id:editorId,name:fd.get('name'),car:fd.get('car'),carName:fd.get('carName'),...photoDraft},dismissRosterDialog);
+    if(ok)restoreRosterPosition();return;
   }
   if (form.getAttribute('id') === 'restore-form') {
     const file = fd.get('backup');
@@ -266,8 +356,10 @@ app.addEventListener('click', async event => {
     else groups.splice(Number(b.dataset.removeGroup),1);
     $('.manual-grid').innerHTML=groupGrid(groups,players);dirty=true;updateGroupSummary();return;
   }
-  if (b.dataset.edit && clean()) { editorId=b.dataset.edit;photoDraft={};render();$('#participant-editor').scrollIntoView({behavior:'smooth',block:'center'}); }
-  if (b.id === 'cancel-edit') { if (clean()) {editorId=null;photoDraft={};dirty=false;render();} return; }
+  if (b.dataset.edit && clean()) { openEditor(b.dataset.edit);return; }
+  if(b.id==='bulk-photos' && clean()){openBulkPhotos();return;}
+  if(b.id==='save-bulk-photos'){await saveBulkPhotos();return;}
+  if (b.id === 'cancel-edit') {closeRosterDialog();return;}
   if (b.dataset.removePhoto) { const field=b.dataset.removePhoto;photoDraft[field]='';dirty=true;$('#preview-'+field).innerHTML=field==='photoData'?'선수 사진':'자동차 사진';return; }
   if (b.dataset.dnf) { document.getElementById('time-' + b.dataset.dnf).value = 'DNF'; dirty = true; return; }
   if (b.dataset.division && clean()) { division = b.dataset.division; editorId=null;photoDraft={}; heat = run = 0; history = -1; render(); }
@@ -297,7 +389,7 @@ try {
   const session = await api('session'); passwordRequired = session.passwordRequired !== false; setLogin(session.authenticated);
   connect(next => {
     if (next.revision < state.revision) return;
-    if (saving || dirty || editorId) {
+    if (saving || dirty || editorId || bulkMode) {
       if (!pendingState || next.revision >= pendingState.revision) pendingState = next;
       if (dirty && loggedIn && next.revision !== revision) $('#stale').hidden = false;
       return;

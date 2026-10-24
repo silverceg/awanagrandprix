@@ -5,8 +5,44 @@ let state, signatures=new Map(), visible=new Set(), queue=[], running=false, gen
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let audioContext, soundOn=false, master, engineNoise;
+let volume=.4;
 const sounding=new Set();
 function stopSound(){for(const source of sounding){try{source.stop();}catch{}}sounding.clear();}
+// All cues are generated locally: a rising drum roll, engine sweep and reveal chord.
+function tone(pitch,at,duration,level,type='sine',end=pitch) {
+  const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=type;
+  osc.frequency.setValueAtTime(pitch,at);osc.frequency.exponentialRampToValueAtTime(end,at+duration);
+  gain.gain.setValueAtTime(.001,at);gain.gain.exponentialRampToValueAtTime(level,at+.012);gain.gain.exponentialRampToValueAtTime(.001,at+duration);
+  osc.connect(gain);gain.connect(master);track(osc,at,at+duration+.02);
+}
+function noiseHit(at,duration,level,frequency=2200) {
+  const src=audioContext.createBufferSource(),filter=audioContext.createBiquadFilter(),gain=audioContext.createGain();
+  src.buffer=engineNoise;src.loop=true;filter.type='bandpass';filter.frequency.value=frequency;filter.Q.value=.6;
+  gain.gain.setValueAtTime(.001,at);gain.gain.exponentialRampToValueAtTime(level,at+.01);gain.gain.exponentialRampToValueAtTime(.001,at+duration);
+  src.connect(filter);filter.connect(gain);gain.connect(master);track(src,at,at+duration+.02);
+}
+function suspenseSound() {
+  if(reduced.matches||!soundOn||audioContext?.state!=='running')return;
+  const now=audioContext.currentTime;
+  for(let t=0;t<2.65;){
+    const fraction=t/2.65;noiseHit(now+t,.09,.13+fraction*.18,1600+fraction*1600);
+    tone(100,now+t,.13,.2,'sine',45);t+=.23-.17*fraction;
+  }
+  for(const t of [.15,.95,1.75])tone(520,now+t,.22,.2,'triangle',520);
+  const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='triangle';
+  osc.frequency.setValueAtTime(100,now);osc.frequency.exponentialRampToValueAtTime(900,now+2.65);
+  gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.15,now+2.55);gain.gain.linearRampToValueAtTime(0,now+2.7);
+  osc.connect(gain);gain.connect(master);track(osc,now,now+2.72);
+}
+function revealSound() {
+  if(!soundOn||audioContext?.state!=='running')return;
+  const now=audioContext.currentTime;tone(145,now,.65,.5,'sine',40);noiseHit(now,.65,.25,4800);
+  [261.63,329.63,392,523.25].forEach((note,i)=>tone(note,now+i*.045,.95,.12,'triangle'));
+  tone(1046.5,now+.16,.8,.08);
+}
+$('#sound-volume').addEventListener('input',event=>{
+  volume=Number(event.target.value)/100;if(master)master.gain.setTargetAtTime(soundOn?volume*.6:0,audioContext.currentTime,.03);
+});
 function engineSound(){
   if(!soundOn || audioContext?.state!=='running')return;
   const now=audioContext.currentTime, envelope=audioContext.createGain();
@@ -31,10 +67,10 @@ $('#sound-toggle').addEventListener('click',async()=>{
     if(soundOn){soundOn=false;stopSound();master.gain.value=0;}
     else{
       if(!audioContext){
-        audioContext=new AudioContext();master=audioContext.createGain();master.connect(audioContext.destination);
+        audioContext=new AudioContext();master=audioContext.createGain();const limiter=audioContext.createDynamicsCompressor();limiter.threshold.value=-12;limiter.ratio.value=8;master.connect(limiter);limiter.connect(audioContext.destination);
         engineNoise=audioContext.createBuffer(1,Math.ceil(audioContext.sampleRate*1.2),audioContext.sampleRate);const data=engineNoise.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;
       }
-      await audioContext.resume();soundOn=audioContext.state==='running';master.gain.value=soundOn ? .12 : 0;
+      await audioContext.resume();soundOn=audioContext.state==='running';master.gain.value=soundOn ? volume*.6 : 0;
       if(soundOn)arrivalSound();
     }
     button.setAttribute('aria-pressed',String(soundOn));button.textContent=soundOn?'효과음 끄기':'효과음 켜기';
@@ -43,11 +79,12 @@ $('#sound-toggle').addEventListener('click',async()=>{
 });
 function celebrate(number){
   if(reduced.matches)return;
-  const target=$(`[data-number="${number}"]`).getBoundingClientRect(),burst=document.createElement('div');burst.className='arrival-burst';burst.setAttribute('aria-hidden','true');
+  const slot=$(`[data-number="${number}"]`);if(!slot)return;const target=slot.getBoundingClientRect(),burst=document.createElement('div');burst.className='arrival-burst';burst.setAttribute('aria-hidden','true');
   burst.style.left=`${target.x+target.width/2}px`;burst.style.top=`${target.y+target.height/2}px`;
-  for(let i=0;i<16;i++){
-    const spark=document.createElement('i'),angle=i*Math.PI/8,range=45+(i%3)*24;
-    spark.style.setProperty('--dx',`${Math.cos(angle)*range}px`);spark.style.setProperty('--dy',`${Math.sin(angle)*range}px`);spark.style.setProperty('--turn',`${i*47}deg`);spark.style.background=['#ffe34b','#69e2ff','#fff','#ff9d40'][i%4];burst.append(spark);
+  for(let i=0;i<28;i++){
+    const spark=document.createElement('i'),angle=i*Math.PI/14,range=65+(i%4)*24;
+    spark.className='spark-'+i%4;burst.append(spark);
+    spark.animate([{opacity:1,transform:'scale(.4)'},{opacity:0,transform:`translate(${Math.cos(angle)*range}px,${Math.sin(angle)*range}px) rotate(${i*47}deg) scale(.7)`}],{duration:950,easing:'cubic-bezier(.1,.6,.3,1)',fill:'forwards'});
   }
   document.body.append(burst);setTimeout(()=>burst.remove(),1000);
 }
@@ -86,16 +123,20 @@ async function play() {
   if(!p){running=false;play();return;}
   visible.delete(id);
   const number=Number(p.car),group=Math.floor((number-1)/4);
-  $('#reveal').classList.remove('flying');$('#reveal').hidden=false;
-  $('#reveal-player').innerHTML=`<div class="reveal-driver">${portrait(p)}${identity(p,true)}${carPhoto(p)}</div>`;
-  $('#reveal-result').innerHTML='<div class="result waiting">우리 조로 출발!</div>';
+  $('#reveal').classList.remove('flying','revealed');$('#reveal').classList.add('charging');$('#reveal').hidden=false;
+  $('#reveal-player').innerHTML=`<div class="reveal-driver">${portrait(p)}${identity(p)}${carPhoto(p)}</div>`;
+  $('#reveal-result').innerHTML='<div class="start-sequence"><span class="launch-label">어느 조의 주인공일까요?</span><div class="start-lights" aria-hidden="true"><i></i><i></i><i></i></div><strong>READY?</strong><div class="charge-track"><span></span></div></div>';
+  suspenseSound();
   $('#reveal-friends').innerHTML='';render();
-  await pause(reduced.matches?100:1100);if(token!==generation)return;
+  await pause(reduced.matches?350:2750);if(token!==generation)return;
+  stopSound();$('#reveal').classList.remove('charging');
+  await pause(reduced.matches?0:220);if(token!==generation)return;
   if(!validPlayer(id) || Number(player(id).car)!==number){finish();return;}
-  $('#reveal-result').innerHTML=`<div class="result"><b>${group+1}</b>조</div>`;
+  $('#reveal').classList.add('revealed');revealSound();
+  $('#reveal-result').innerHTML=`<div class="result"><small>선수 번호 ${number}번</small><span><b>${group+1}</b>조</span><em>우리 팀에 오신 걸 환영해요!</em></div>`;
   const friends=numberDraw(state.divisions.awana.participants).groups[group].filter(q=>q&&q.id!==id&&visible.has(q.id));
   $('#reveal-friends').innerHTML=`<p class="friends-title">${friends.length?'함께 달릴 우리 조 친구들':'우리 조의 첫 번째 주인공이에요!'}</p><div class="friends">${friends.map(q=>`<div class="friend"><small>#${e(q.car)}</small>${e(q.name)}</div>`).join('')}</div>`;
-  await pause(reduced.matches?500:1400);if(token!==generation)return;
+  await pause(reduced.matches?500:1700);if(token!==generation)return;
   if(!validPlayer(id) || Number(player(id).car)!==number){finish();return;}
   const start=$('.reveal-driver').getBoundingClientRect(),destination=$(`[data-number="${number}"]`).getBoundingClientRect();
   $('#reveal').classList.add('flying');
@@ -112,7 +153,7 @@ async function play() {
   visible.add(id);recent=id;$('#reveal').hidden=true;render();celebrate(number);arrivalSound();
   await pause(reduced.matches?150:650);if(token!==generation)return;
   finish();
-  function finish(){ $('#reveal').hidden=true;running=false;render();play(); }
+  function finish(){ stopSound();$('#reveal').hidden=true;running=false;render();play(); }
 }
 function accept(next) {
   if(state && next.revision<state.revision)return;
