@@ -1,9 +1,11 @@
+import { isFour, laneRecords } from './race-format.js';
+export { isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, groupNumber, legacyOrder } from './race-format.js';
 export const $ = selector => document.querySelector(selector);
 export { numberDraw } from './draw-model.js';
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const fmt = value => value === 'DNF' ? 'DNF' : value == null ? '—' : (value / 1000).toFixed(3);
 export const current = d => d.rounds.at(-1);
-export const nextCount = key => key === 'awana' ? 16 : 8;
+export const nextCount = key => 1;
 export function numberedGroups(players) {
   const ids=[...players].sort((a,b)=>a.car.localeCompare(b.car,'ko',{numeric:true})).map(p=>p.id);
   return Array.from({length:Math.ceil(ids.length/4)},(_,i)=>ids.slice(i*4,i*4+4));
@@ -67,19 +69,23 @@ export function rows(d, r = current(d)) {
   if (!r) return [];
   const data = r.entrantIds.map(id => {
     const rec = r.results[id], complete = rec.times.every(t => t !== null), valid = rec.times.filter(t => typeof t === 'number');
-    return { ...d.participants.find(p => p.id === id), ...rec, complete, best: complete && valid.length ? Math.min(...valid) : Infinity };
+    return { ...d.participants.find(p => p.id === id), ...rec, complete, best: (isFour(r) || complete) && valid.length ? Math.min(...valid) : Infinity };
   });
-  const compare = (a, b) => a.best - b.best || (!r.advance ? (typeof a.tieBreak === 'number' ? a.tieBreak : Infinity) - (typeof b.tieBreak === 'number' ? b.tieBreak : Infinity) : 0) || 0;
+  const compare = (a, b) => a.best - b.best || (!r.advance && !isFour(r) ? (typeof a.tieBreak === 'number' ? a.tieBreak : Infinity) - (typeof b.tieBreak === 'number' ? b.tieBreak : Infinity) : 0) || 0;
   data.sort((a, b) => compare(a, b) || a.car.localeCompare(b.car, 'ko', { numeric: true }));
   data.forEach((row, i) => { row.rank = Number.isFinite(row.best) ? (i && compare(row, data[i - 1]) === 0 ? data[i - 1].rank : i + 1) : null; });
   return data;
 }
 export function lanes(r, heat, run) {
   const result = [null, null, null, null];
-  r.groups[heat]?.forEach((id, i) => { result[i] = id; });
+  r.groups[heat]?.forEach((id, i) => { result[isFour(r) ? (i + run) % 4 : i] = id; });
   return result;
 }
 export function ranking(d, r, limit = Infinity, offset = 0) {
+  if(isFour(r)){
+    const list=rows(d,r).filter(p=>p.times.some(t=>t!==null)).slice(offset,offset+limit);
+    return `<table><thead><tr><th>순위</th><th>참가자</th>${[1,2,3,4].map(i=>`<th>${i}레인</th>`).join('')}<th>최고 기록</th><th>완료</th></tr></thead><tbody>${list.map(p=>`<tr><td>${p.rank||'—'}</td><td>#${escape(p.car)} <strong>${escape(p.name)}</strong><small class="participant-car-name">${escape(p.carName)}</small></td>${laneRecords(r,p.id).map(t=>`<td>${fmt(t)}</td>`).join('')}<td class="best">${Number.isFinite(p.best)?fmt(p.best):'DNF'}</td><td>${p.times.filter(t=>t!==null).length}/4</td></tr>`).join('')}</tbody></table>`;
+  }
   const list = rows(d, r).filter(p => p.complete).slice(offset, offset + limit);
   return `<table><thead><tr><th>순위</th><th>참가자</th><th>1차</th><th>2차</th><th>최고 기록</th><th>재경기</th></tr></thead><tbody>${list.map(p => `<tr class="${p.rank && p.rank <= (r.advance || 3) ? 'qualifier' : ''}"><td><b class="rank">${p.rank || '—'}</b></td><td><span class="car">#${escape(p.car)}</span> <strong>${escape(p.name)}</strong>${p.carName ? `<small class="participant-car-name">${escape(p.carName)}</small>` : ''}${r.advancedIds?.includes(p.id) ? '<small class="tag">진출 확정</small>' : ''}</td><td>${fmt(p.times[0])}</td><td>${fmt(p.times[1])}</td><td class="best">${Number.isFinite(p.best) ? fmt(p.best) : p.complete ? 'DNF' : '대기'}</td><td>${fmt(p.tieBreak)}</td></tr>`).join('')}</tbody></table>`;
 }

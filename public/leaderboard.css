@@ -4,3 +4,47 @@
 .combined-board{grid-template-rows:10cqh minmax(0,1fr) 3cqh}.combined-board h1{font-size:2.7cqw}.division-boards{min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:1.7cqw}.division-board{min-height:0;display:grid;grid-template-rows:7cqh minmax(0,1fr) 2.4cqh;gap:1cqh;border:1px solid #607da34d;border-radius:1cqw;padding:1.3cqh 1cqw;background:#092442bb}.division-board.on-air{border-color:#ffe15a99;box-shadow:inset 0 .35cqh #ffe15a}.division-board>header{display:flex;align-items:center;justify-content:space-between;gap:1cqw}.division-board h2{font-size:2cqw;margin:0 0 .3cqh}.division-board h2 em{font-style:normal;font-size:1.4cqw;color:#ffdc57}.division-status{font-size:.75cqw;color:#a4bddd}.on-air .division-status{color:#ffe15a}.division-progress{text-align:right}.division-progress strong{font-size:1.3cqw;color:#ffe186}.division-progress small{display:block;font-size:.65cqw;color:#9bb8d9;margin-top:.3cqh}.dual-ranks{min-height:0;display:grid;gap:.7cqw}.division-footer{margin:0;align-self:center;font-size:.85cqw;color:#b7cdea;text-align:center}.dual-ranks .entry{gap:.7cqw}.dual-ranks .entry .identity strong{font-size:1.3cqw}.dual-ranks .entry.tier-1 .identity strong{font-size:1.7cqw}.dual-ranks .entry.tier-2 .identity strong{font-size:1.5cqw}.dual-ranks .entry.tier-3 .identity strong{font-size:1.4cqw}.dual-ranks .entry .identity small{font-size:.75cqw}.dual-ranks .entry .portrait{max-height:6cqh}.dual-ranks .entry .result strong{font-size:1.5cqw}.dual-ranks .entry.empty>small{font-size:.8cqw}
 
 .dual-ranks .entry{padding:.15cqh .8cqw}.dual-ranks .entry.tier-1{flex:1.4}.dual-ranks .entry.tier-2{flex:1.25}.dual-ranks .entry.tier-3{flex:1.15}.dual-ranks .entry .identity strong{font-size:1.15cqw}.dual-ranks .entry.tier-1 .identity strong{font-size:1.5cqw}.dual-ranks .entry.tier-2 .identity strong{font-size:1.32cqw}.dual-ranks .entry.tier-3 .identity strong{font-size:1.22cqw}.dual-ranks .entry .result strong{font-size:1.35cqw}
+
+/* Main event: two thirds Awana, one third open division, throughout all four rounds. */
+.division-boards{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1.2cqw}
+.division-board{min-width:0;grid-template-rows:5.5cqh 14cqh minmax(0,1fr) 2cqh;padding:1.2cqh .8cqw;gap:.8cqh}
+.division-board h2{font-size:1.8cqw;margin:0}
+.division-board>header{padding:0 .3cqw}
+.division-spotlights{display:grid;grid-template-columns:1.15fr 1fr .94fr;gap:.45cqw;min-height:0}
+.division-spotlights.single-winner{grid-template-columns:1fr}
+.division-spotlights .spotlight{position:relative;display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;padding:.8cqh .6cqw;gap:.3cqh .45cqw;border-radius:.65cqw}
+.division-spotlights .medal{font-size:2.7cqw;grid-row:1}
+.division-spotlights .medal small{font-size:.45cqw;letter-spacing:0;margin-top:.3cqh}
+.division-spotlights .portrait{width:3.1cqw;border-width:2px}
+.division-spotlights .spot-name{grid-column:3;grid-row:1}
+.division-spotlights .spot-name>small{font-size:.6cqw}
+.division-spotlights .spot-name h2{font-size:1.3cqw;margin:.5cqh 0}
+.division-spotlights .spot-2 .spot-name h2{font-size:1.2cqw}
+.division-spotlights .spot-3 .spot-name h2{font-size:1.1cqw}
+.division-spotlights .spot-name>span{font-size:.62cqw}
+.division-spotlights .spot-time{grid-column:2/4;grid-row:2;text-align:right;font-size:1.8cqw;line-height:1}
+.division-spotlights .spot-time small{display:inline;font-size:.65cqw;margin-left:.4cqw}
+.division-spotlights .waiting .spot-name h2{white-space:normal;font-size:.85cqw;line-height:1.25}
+.single-winner .spotlight{grid-template-columns:auto auto minmax(0,1fr)}
+.single-winner .medal{font-size:3.5cqw}.single-winner .portrait{width:4.4cqw}
+.single-winner .spot-name h2{font-size:1.8cqw}.single-winner .spot-time{font-size:2cqw}
+.dual-ranks .rank-column{gap:.35cqh}
+.dual-ranks .entry{padding:.1cqh .4cqw;gap:.4cqw}
+.dual-ranks .entry .portrait{max-height:2.4cqh;border-width:1px}
+.dual-ranks .entry .identity strong{font-size:1cqw;max-width:67%}
+.dual-ranks .entry .identity small{font-size:.62cqw}
+.dual-ranks .entry .result strong{font-size:1.15cqw}
+.dual-ranks .entry .place,.dual-ranks .entry.empty>b{font-size:1.2cqw;width:1.5cqw}
+.dual-ranks .entry.tier-1{flex:1.15}.dual-ranks .entry.tier-2{flex:1.08}.dual-ranks .entry.tier-3{flex:1.04}
+.dual-ranks .entry.tier-1 .identity strong{font-size:1.15cqw}.dual-ranks .entry.tier-2 .identity strong{font-size:1.08cqw}.dual-ranks .entry.tier-3 .identity strong{font-size:1.04cqw}
+[data-board-division="open"] .dual-ranks .entry.tier-2,[data-board-division="open"] .dual-ranks .entry.tier-3{flex:1;border-color:#54739370}
+[data-board-division="open"] .dual-ranks .entry.tier-2 .identity strong,[data-board-division="open"] .dual-ranks .entry.tier-3 .identity strong{font-size:1cqw}
+.division-footer{font-size:.7cqw}
+
+.dual-ranks{width:100%;max-width:none;justify-self:stretch}
+.spotlights:has(>.spotlight:only-child){grid-template-columns:1fr}
+
+.dual-ranks .entry .place,.dual-ranks .entry.empty>b{font-size:1.05cqw;line-height:1}
+.dual-ranks .entry .identity strong{line-height:1}
+.dual-ranks .entry .result{line-height:1}
+.dual-ranks .entry .result strong{display:block;font-size:1.05cqw;line-height:1}
