@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {freshState,mutate,lanesFor} from '../lib/race.js';
+import {freshState,mutate,lanesFor} from './legacy-fixture.js';
 import {createApp} from '../server.js';
 import {parseRoster,orderedGroups} from '../public/common.js';
 import {renderBoard} from '../public/leaderboard.js';
@@ -62,19 +62,19 @@ test('수동 예선의 출전순 유지: 기록 선발 후 4명씩, 이전 기�
   assert.deepEqual(next.groups.flat(),expected);assert.ok(next.groups.every(g=>g.length===4));
   assert.equal(old.status,'completed');assert.ok(Object.values(next.results).every(rec=>rec.times.every(t=>t===null)&&rec.scoreMs===0));
 });
-test('통합 순위: 예선 단독 → 어와나16 + 일반부18 → 일반부8, 고정 화면 유지',()=>{
+test('통합 순위: 항상 두 부문 표시, 과거 기록과 고정 화면 호환',()=>{
   const s=freshState();seed(s,'awana',40);seed(s,'open',18);
-  assert.equal((renderBoard(s).match(/class="entry empty"/g)||[]).length,40);
+  assert.equal((renderBoard(s).match(/class="entry empty"/g)||[]).length,58);
   mutate(s,'start',{division:'awana'});finish(s,'awana');
   let html=renderBoard(s);assert.match(html,/combined-board/);assert.equal((html.match(/class="entry empty"/g)||[]).length,34);
   assert.ok(!html.includes('awana0'));assert.ok(!html.includes('open0'));
   assert.ok(!renderBoard(s,'awana').includes('combined-board'));
   assert.equal((renderBoard(s,'awana').match(/class="entry empty"/g)||[]).length,16);
   mutate(s,'start',{division:'open'});html=renderBoard(s);
-  assert.match(html,/on-air" data-board-division="open"/);
+  assert.match(html,/data-board-division="open"/);
   assert.equal((renderBoard(s,'open').match(/class="entry empty"/g)||[]).length,18);
   finish(s,'open');assert.equal((renderBoard(s).match(/class="entry empty"/g)||[]).length,24);
-  mutate(s,'reset-records',{confirmation:'기록 초기화'});assert.ok(!renderBoard(s).includes('combined-board'));
+  mutate(s,'reset-records',{confirmation:'기록 초기화'});assert.ok(renderBoard(s).includes('combined-board'));
   assert.match(renderBoard(s,'both'),/combined-board/);
 });
 test('HTTP 수동 편성 저장·재시작 보존·충돌 차단 및 명단 일괄 등록 롤백',async()=>{
@@ -93,3 +93,4 @@ test('HTTP 수동 편성 저장·재시작 보존·충돌 차단 및 명단 일�
     assert.deepEqual(app.store.read(),saved);
   }finally{await app.close();rmSync(dir,{recursive:true,force:true});}
 });
+

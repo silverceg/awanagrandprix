@@ -2,15 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
-import { freshState, mutate } from '../lib/race.js';
+import { freshState, mutate } from './legacy-fixture.js';
+import { mutate as liveMutate } from '../lib/race.js';
 import * as common from '../public/common.js';
 
 // Execute the real host controller with an isolated DOM/API adapter. No real DB.
-async function host() {
-  const initial = freshState();
-  mutate(initial, 'participants', {division:'open',entries:Array.from({length:18},(_,i)=>({name:`선수${i+1}`}))});
-  mutate(initial,'start',{division:'open'});
-  initial.display={division:'open',heat:2,run:1,mode:'race'};
+async function host(four=false) {
+  const initial = freshState(),apply=four?liveMutate:mutate;
+  if(four){apply(initial,'participants',{division:'awana',entries:Array.from({length:4},(_,i)=>({name:'어와나'+i}))});apply(initial,'start',{division:'awana'});}
+  apply(initial, 'participants', {division:'open',entries:Array.from({length:18},(_,i)=>({name:`선수${i+1}`}))});
+  apply(initial,'start',{division:'open'});
+  if(!four)initial.display={division:'open',heat:2,run:1,mode:'race'};
   const elements=new Map(), handlers={}, requests=[];
   const element=key=>{
     if(!elements.has(key))elements.set(key,{hidden:false,value:'',innerHTML:'',querySelectorAll:()=>[],classList:{add(){},remove(){}},addEventListener(type,fn){handlers[key+':'+type]=fn;}});
@@ -26,7 +28,7 @@ async function host() {
       requests.push({name,body});
       if(hold)await hold;
       if(failure)throw Object.assign(new Error('테스트 저장 실패'),{status:400});
-      mutate(remote,name,body);remote.revision++;return structuredClone(remote);
+      apply(remote,name,body);remote.revision++;return structuredClone(remote);
     },connect:fn=>{onState=fn;}});
   const source=(await readFile(new URL('../public/host.js',import.meta.url),'utf8')).replace(/^import[^\n]+\n/,'');
   await vm.runInContext(`(async()=>{${source}\nglobalThis.inspector=()=>({heat,run,history,revision,state,dirty,saving});})();`,context);
@@ -34,7 +36,7 @@ async function host() {
     click:async id=>handlers['#app:click']({target:{closest:()=>({id,dataset:{}})}}),
     change:(id,value)=>handlers['#app:change']({target:{id,value}}),
     edit:()=>handlers['#app:input']({target:{closest:()=>true}}),
-    submit:async (values,id='records-form')=>handlers['#app:submit']({preventDefault(){},target:{values,getAttribute:()=>id}}),
+    submit:async (values,id='records-form',advance=false)=>handlers['#app:submit']({preventDefault(){},submitter:{value:advance?'advance':'stay'},target:{values,getAttribute:()=>id}}),
     push:s=>onState(s),remote,allow:()=>{failure=false;},defer:p=>{hold=p;}};
 }
 test('다음 주행 요청 실패 시 화면과 내부 조·주행이 모두 유지됨',async()=>{
@@ -94,4 +96,20 @@ test('초기화 폼 저장 후 잘못된 조 선택 없이 참가자 등록 화�
   assert.equal(h.inspect().state.divisions.open.rounds.length,0);
   assert.equal(h.inspect().state.divisions.open.participants.length,18);
   assert.match(h.element('#app').innerHTML,/participants-form/);
+});
+
+
+test('새 규칙 호스트: 저장 실패 시 유지, 저장 후 다음 경기 성공 시 실제 레인과 선택 함께 이동',async()=>{
+  const h=await host(true),r=h.remote.divisions.awana.rounds[0];
+  const values=Object.fromEntries(r.groups[0].map(id=>[id,'3.123']));
+  await h.submit(values,'records-form',true);
+  assert.equal(h.inspect().run,0);assert.equal(h.inspect().state.meeting.cursor,0);
+  h.allow();await h.submit(values,'records-form',true);
+  assert.equal(h.inspect().run,0);assert.equal(h.inspect().state.meeting.cursor,1);
+  assert.equal(h.inspect().state.display.division,'open');
+  assert.match(h.element('#app').innerHTML,/일반부 · 2조 · 본선 1라운드 기록/);
+  const open=h.remote.divisions.open.rounds[0];
+  for(const group of open.groups)await h.submit(Object.fromEntries(group.filter(Boolean).map(id=>[id,'3.250'])),'records-form',true);
+  assert.equal(h.inspect().state.display.division,'awana');assert.equal(h.inspect().heat,0);assert.equal(h.inspect().run,1);
+  assert.match(h.element('#app').innerHTML,/어와나 · 1조 · 본선 2라운드 기록/);
 });

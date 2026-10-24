@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createStore} from '../lib/store.js';
 import {createApp} from '../server.js';
-import {freshState,mutate} from '../lib/race.js';
+import {freshState,mutate} from './legacy-fixture.js';
 import {boardData,renderBoard} from '../public/leaderboard.js';
 
 const jpeg='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q==';
@@ -44,7 +44,7 @@ test('사진 포함 전체 백업을 다른 서버로 복원, 기존 데이터 �
   try{
     const update=act(source);seed(update);seed(update,'open',18);const p=source.read().divisions.awana.participants[0];
     update('participant-update',{division:'awana',id:p.id,name:p.name,car:p.car,carName:'노란차',photoData:jpeg,carPhotoData:jpeg});update('start',{division:'awana'});
-    const round=source.read().divisions.awana.rounds[0];update('records',{division:'awana',roundId:round.id,heat:0,run:0,records:Object.fromEntries(round.groups[0].map(id=>[id,'3.123']))});
+    update('start',{division:'open'});const round=source.read().divisions.awana.rounds[0];update('records',{division:'awana',roundId:round.id,heat:0,run:0,records:Object.fromEntries(round.groups[0].map(id=>[id,'3.123']))});
     const backup=source.export(),restore=act(target);restore('title',{title:'원래 행사'});const before=target.read();
     const result=restore('restore',{confirmation:'백업 복원',backup});assert.equal(result.revision,before.revision+1);
     assert.deepEqual(result.divisions,backup.state.divisions);assert.deepEqual(JSON.parse(target.resetBackup()).state,before);assert.ok(target.media(result.divisions.awana.participants[0].photoUrl));
@@ -67,7 +67,7 @@ test('이전 버전 JSON 백업 호환, 사진 누락·백업 쓰기 실패 시 
 });
 test('전체 순위: 경기 전 이름 숨김, 45명 완료, 어와나16칸/일반부18칸 별도 전환',()=>{
   const s=freshState(),update=(name,body)=>mutate(s,name,body);seed(update);seed(update,'open',18);
-  assert.equal(boardData(s).list.length,0);assert.equal((renderBoard(s).match(/class="entry empty"/g)||[]).length,45);assert.ok(!renderBoard(s).includes('선수1'));
+  assert.equal(boardData(s).list.length,0);assert.equal((renderBoard(s).match(/class="entry empty"/g)||[]).length,63);assert.ok(!renderBoard(s).includes('선수1'));
   update('start',{division:'awana'});const r=s.divisions.awana.rounds[0];
   for(let heat=0;heat<r.groups.length;heat++)for(let run=0;run<2;run++){
     update('records',{division:'awana',roundId:r.id,heat,run,records:Object.fromEntries(r.groups[heat].map(id=>[id,(3+s.divisions.awana.participants.findIndex(p=>p.id===id)/100+run/10).toFixed(3)]))});
@@ -92,3 +92,4 @@ test('HTTP 사진 조회·인증·백업 복원 및 전체 순위 경로',async(
     for(const path of ['/leaderboard','/leaderboard.js','/leaderboard.css'])assert.equal((await fetch(url+path)).status,200);
   }finally{await app.close();rmSync(dir,{recursive:true,force:true});}
 });
+

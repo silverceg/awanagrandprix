@@ -6,27 +6,34 @@ import { join } from 'node:path';
 import { createApp } from '../server.js';
 import { lanesFor } from '../lib/race.js';
 const pin = 'test-password-9281';
-test('기록 수정 사유·조 전체 원자적 저장·재경기 무효화', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'awana-test-'));
-  const app = createApp({ dataDir: dir, pin });
-  try {
-    const store = app.store;
-    const act = (action, body) => store.update(action, { revision: store.read().revision, division: 'open', ...body });
-    act('participants', { entries: Array.from({ length: 8 }, (_, i) => ({ name: `선수${i}` })) });
-    const s = act('start', {}), r = s.divisions.open.rounds[0], ids = lanesFor(r, 0, 0).filter(Boolean);
-    const records = Object.fromEntries(ids.map(id => [id, '3.200']));
-    const before = store.read();
-    assert.throws(() => act('records', { roundId: r.id, heat: 0, run: 0, records: { ...records, [ids.at(-1)]: '0' } }));
-    assert.deepEqual(store.read(), before);
-    act('records', { roundId: r.id, heat: 0, run: 0, records });
-    assert.throws(() => act('records', { roundId: r.id, heat: 0, run: 0, records }), /수정 사유/);
-    act('records', { roundId: r.id, heat: 0, run: 1, records });
-    act('tiebreak', { roundId: r.id, id: ids[0], time: '3.100', reason: '동점 재경기' });
-    const changed = act('records', { roundId: r.id, heat: 0, run: 0, records: { ...records, [ids[0]]: '3.050' }, reason: '원본 기록 재확인' });
-    assert.equal(changed.divisions.open.rounds[0].results[ids[0]].scoreMs, 3050);
-    assert.ok(Object.values(changed.divisions.open.rounds[0].results).every(rec => rec.tieBreak === null));
-    assert.match(store.audit()[0].detail, /원본 기록 재확인/);
-  } finally { app.server.close(); app.store.close(); rmSync(dir, { recursive: true, force: true }); }
+
+test('4회 기록 수정 사유·조 전체 원자적 저장·미래 경기 차단',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'awana-four-atomic-')),app=createApp({dataDir:dir,pin});
+  try{
+    const store=app.store,act=(action,body)=>store.update(action,{revision:store.read().revision,...body});
+    for(const division of ['awana','open']){
+      act('participants',{division,entries:Array.from({length:4},(_,i)=>({name:'선수'+i}))});
+      act('start',{division});
+    }
+    const r=store.read().divisions.awana.rounds[0],ids=lanesFor(r,0,0).filter(Boolean);
+    const body={division:'awana',roundId:r.id,heat:0,run:0,records:Object.fromEntries(ids.map(id=>[id,'3.200']))};
+    const before=store.read();
+    assert.throws(()=>act('records',{...body,records:{...body.records,[ids.at(-1)]:'0'}}));
+    assert.deepEqual(store.read(),before);
+    assert.throws(()=>act('records',{...body,run:2}),/앞 순서/);
+    act('records',body);
+    assert.throws(()=>act('records',body),/수정 사유/);
+    act('records',{...body,records:{...body.records,[ids[0]]:'3.050'},reason:'스톱워치 확인'});
+    assert.equal(store.read().divisions.awana.rounds[0].results[ids[0]].scoreMs,3050);
+    assert.throws(()=>act('tiebreak',{division:'awana',roundId:r.id,id:ids[0],time:'3.100',reason:'동점'}),/공동 순위/);
+    const saved=store.read();
+    assert.throws(()=>act('records',{...body,heat:0,run:0,advance:true,division:'open',roundId:saved.divisions.open.rounds[0].id}),/앞 순서/);
+    assert.deepEqual(store.read(),saved);
+    act('next-race',{division:'awana',roundId:r.id,heat:0,run:0});
+    assert.equal(store.read().display.division,'open');
+    assert.equal(store.read().display.run,0);
+    assert.throws(()=>act('next-race',{division:'open',roundId:store.read().divisions.open.rounds[0].id,heat:0,run:0}),/모든 기록/);
+  }finally{app.server.close();app.store.close();rmSync(dir,{recursive:true,force:true});}
 });
 async function start(dir) {
   const app = createApp({ dataDir: dir, pin, production: false });
@@ -41,39 +48,49 @@ async function start(dir) {
   }
   return { app, base, get, post };
 }
-test('HTTP 전체 대회: 45→16→8→4 / 20→8→4, SQLite 재시작 보존', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'awana-test-')); let app;
-  try {
-    let context = await start(dir); app = context.app;
-    let s = await (await context.get('/api/state')).json();
-    for (const [division, count, expected] of [['awana', 45, [45, 16, 8, 4]], ['open', 20, [20, 8, 4]]]) {
-      let result = await context.post('participants', { revision: s.revision, division, entries: Array.from({ length: count }, (_, i) => ({ name: `한글선수${i + 1}` })) });
-      assert.equal(result.status, 200); s = result.data;
-      result = await context.post('start', { revision: s.revision, division }); assert.equal(result.status, 200); s = result.data;
-      for (const size of expected) {
-        const round = s.divisions[division].rounds.at(-1);
-        assert.equal(round.entrantIds.length, size);
-        for (let heat = 0; heat < round.groups.length; heat++) for (let run = 0; run < 2; run++) {
-          const records = Object.fromEntries(lanesFor(round, heat, run).filter(Boolean).map(id => [id, ((3000 + round.entrantIds.indexOf(id) * 10 + run * 100) / 1000).toFixed(3)]));
-          result = await context.post('records', { revision: s.revision, division, roundId: round.id, heat, run, records });
-          assert.equal(result.status, 200, JSON.stringify(result.data)); s = result.data;
-        }
-        result = await context.post('finish', { revision: s.revision, division, roundId: round.id });
-        assert.equal(result.status, 200, JSON.stringify(result.data)); s = result.data;
-        const newest = s.divisions[division].rounds.at(-1);
-        if (newest.id !== round.id) assert.ok(Object.values(newest.results).every(rec => rec.scoreMs === 0 && rec.times.every(t => t === null)));
-      }
-      assert.equal(s.divisions[division].rounds.at(-1).status, 'completed');
-      assert.ok(s.divisions[division].rounds.at(-1).winnerId);
+
+test('HTTP 40명/18명 전체 60경기: 부문 자동 전환·레인 순환·재시작·CSV·최종 공동 순위',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'awana-four-http-'));let ctx=await start(dir);
+  try{
+    for(const [division,count] of [['awana',40],['open',18]]){
+      let revision=ctx.app.store.read().revision;
+      let res=await ctx.post('participants',{revision,division,entries:Array.from({length:count},(_,i)=>({name:division+i,car:String(i+(division==='awana'?1:41))}))});
+      assert.equal(res.status,200);
+      const ids=res.data.divisions[division].participants.map(p=>p.id);
+      res=await ctx.post('start',{revision:res.data.revision,division,groups:Array.from({length:Math.ceil(count/4)},(_,i)=>ids.slice(i*4,i*4+4))});
+      assert.equal(res.status,200);
     }
-    const csv = await (await context.get('/api/csv')).text(); assert.match(csv, /한글선수/); assert.match(csv, /준준결승/);
-    const backup = await (await context.get('/api/export')).json(); assert.equal(backup.state.revision, s.revision);
-    await app.close(); app = null;
-    context = await start(dir); app = context.app;
-    const restored = await (await context.get('/api/state')).json(); assert.deepEqual(restored, s);
-    assert.equal(app.store.db.prepare('SELECT COUNT(*) AS n FROM snapshots').get().n, s.revision);
-  } finally { if (app) await app.close(); rmSync(dir, { recursive: true, force: true }); }
+    for(let step=0;step<60;step++){
+      const s=ctx.app.store.read(),task=s.display,r=s.divisions[task.division].rounds[0];
+      assert.equal(s.meeting.cursor,step);
+      assert.equal(task.division,step%15<10?'awana':'open');
+      const run=Math.floor(step/15);
+      assert.equal(task.heat,step%15<10?step%15:step%15-10);
+      assert.equal(task.run,run);
+      const records=Object.fromEntries(lanesFor(r,task.heat,task.run).filter(Boolean).map(id=>[id,(3+task.run/10).toFixed(3)]));
+      const response=await ctx.post('records',{revision:s.revision,division:task.division,roundId:r.id,heat:task.heat,run:task.run,records,advance:true});
+      assert.equal(response.status,200,JSON.stringify(response.data));
+      if(step===14){
+        const saved=ctx.app.store.read();await ctx.app.close();ctx=await start(dir);
+        assert.deepEqual(ctx.app.store.read(),saved);
+        assert.ok(Object.values(saved.divisions.awana.rounds[0].results).every(rec=>rec.times[0]!==null && rec.times[1]===null && rec.times[2]===null));
+      }
+    }
+    const done=ctx.app.store.read();
+    assert.equal(done.meeting.status,'completed');assert.equal(done.meeting.cursor,60);
+    for(const d of Object.values(done.divisions)){
+      assert.equal(d.rounds.length,1);assert.equal(d.rounds[0].status,'completed');
+      assert.ok(Object.values(d.rounds[0].results).every(rec=>rec.times.length===4 && rec.times.every(t=>t!==null)));
+    }
+    const csv=await (await ctx.get('/api/csv')).text();
+    assert.match(csv,/3레인/);assert.match(csv,/4레인/);assert.match(csv,/3.300/);
+    for(const path of ['/race-format.js','/tv','/host','/leaderboard','/draw'])assert.equal((await ctx.get(path)).status,200);
+    const backup=await(await ctx.get('/api/export')).json();
+    const restored=await ctx.post('restore',{revision:done.revision,confirmation:'백업 복원',backup});
+    assert.equal(restored.status,200);assert.deepEqual(restored.data.divisions,done.divisions);assert.deepEqual(restored.data.meeting,done.meeting);
+  }finally{await ctx.app.close();rmSync(dir,{recursive:true,force:true});}
 });
+
 test('인증·충돌·오입력 롤백·실시간 관객 동기화·정적 화면', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'awana-test-')); let app, reader;
   try {
