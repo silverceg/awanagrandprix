@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, dirname, join } from 'node:path';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
+import { isFour, laneRecords } from './public/race-format.js';
 import { createStore } from './lib/store.js';
 import { RaceError, standings, formatTime } from './lib/race.js';
 
@@ -63,9 +64,9 @@ export function createApp({ dataDir = process.env.DATA_DIR || join(root, 'data')
             res.setHeader('Content-Disposition', 'attachment; filename="awana-records.json"');
             return json(res, 200, store.export());
           }
-          const rows = [['부문', '라운드', '상태', '순위', '차량번호', '이름', '자동차 이름', '1차(초)', '2차(초)', '최고기록(초)', '재경기(초)', '진출']];
+          const rows = [['부문', '라운드', '상태', '순위', '차량번호', '이름', '자동차 이름', '1레인/구규칙1차(초)', '2레인/구규칙2차(초)', '3레인(초)', '4레인(초)', '최고기록(초)', '재경기(초)', '진출']];
           for (const d of Object.values(state.divisions)) for (const r of d.rounds) for (const row of standings(d, r)) {
-            rows.push([d.name, r.name, r.status, row.rank, row.car, row.name, row.carName || '', ...row.times.map(formatTime), Number.isFinite(row.best) ? formatTime(row.best) : '', formatTime(row.tieBreak), r.advancedIds?.includes(row.id) ? '진출' : '']);
+            rows.push([d.name, r.name, r.status, row.rank, row.car, row.name, row.carName || '', ...(isFour(r)?laneRecords(r,row.id):[...row.times,null,null]).map(formatTime), Number.isFinite(row.best) ? formatTime(row.best) : '', formatTime(row.tieBreak), r.advancedIds?.includes(row.id) ? '진출' : '']);
           }
           res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="awana-results.csv"' });
           res.end('\ufeff' + rows.map(row => row.map(csvCell).join(',')).join('\r\n')); return;
@@ -76,7 +77,7 @@ export function createApp({ dataDir = process.env.DATA_DIR || join(root, 'data')
           res.writeHead(200, {'Content-Type':'image/jpeg','Cache-Control':'public, max-age=31536000, immutable'});
           res.end(Buffer.from(bytes)); return;
         }
-        const assets = { '/draw':'draw.html', '/draw.js':'draw.js', '/draw.css':'draw.css', '/draw-model.js':'draw-model.js', '/leaderboard':'leaderboard.html', '/leaderboard.js':'leaderboard.js', '/leaderboard.css':'leaderboard.css', '/': 'host.html', '/host': 'host.html', '/tv': 'tv.html', '/host.js': 'host.js', '/tv.js': 'tv.js', '/common.js': 'common.js', '/style.css': 'style.css', '/tv.css': 'tv.css', '/fonts/Jua-Regular.ttf': 'fonts/Jua-Regular.ttf', '/fonts/LilitaOne-Regular.ttf': 'fonts/LilitaOne-Regular.ttf', '/fonts/Jua-Regular.ttf': 'fonts/Jua-Regular.ttf', '/fonts/LilitaOne-Regular.ttf': 'fonts/LilitaOne-Regular.ttf', '/race-hero.jpg': 'race-hero.jpg', '/favicon.svg': 'favicon.svg' };
+        const assets = { '/race-format.js':'race-format.js', '/draw':'draw.html', '/draw.js':'draw.js', '/draw.css':'draw.css', '/draw-model.js':'draw-model.js', '/leaderboard':'leaderboard.html', '/leaderboard.js':'leaderboard.js', '/leaderboard.css':'leaderboard.css', '/': 'host.html', '/host': 'host.html', '/tv': 'tv.html', '/host.js': 'host.js', '/tv.js': 'tv.js', '/common.js': 'common.js', '/style.css': 'style.css', '/tv.css': 'tv.css', '/fonts/Jua-Regular.ttf': 'fonts/Jua-Regular.ttf', '/fonts/LilitaOne-Regular.ttf': 'fonts/LilitaOne-Regular.ttf', '/fonts/Jua-Regular.ttf': 'fonts/Jua-Regular.ttf', '/fonts/LilitaOne-Regular.ttf': 'fonts/LilitaOne-Regular.ttf', '/race-hero.jpg': 'race-hero.jpg', '/favicon.svg': 'favicon.svg' };
         if (!Object.hasOwn(assets, path)) throw new RaceError('페이지를 찾을 수 없습니다.', 404);
         const file = assets[path], extension = file.split('.').at(-1);
         const types = { html: 'text/html', js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', jpg: 'image/jpeg', ttf: 'font/ttf', ttf: 'font/ttf' };
