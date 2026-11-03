@@ -15,7 +15,11 @@ function setLogin(value) { loggedIn = value; $('#login').hidden = value; app.hid
 function render() {
   if (!loggedIn || !state) return;
   if (!saving && pendingState) {
-    if (pendingState.revision > state.revision) state = pendingState;
+    if (pendingState.revision > state.revision) {
+      const moved=pendingState.meeting?.cursor!==state.meeting?.cursor || pendingState.meeting?.status!==state.meeting?.status;
+      state = pendingState;
+      if(moved && state.meeting)followRace();
+    }
     pendingState = null;
   }
   const rosterSearch=$('#roster-search')?.value || '';

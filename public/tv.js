@@ -1,4 +1,4 @@
-import { $, escape as e, current, fmt, rows, lanes, connect, isFour, laneRecords, phases, eventSchedule, groupNumber } from './common.js';
+import { $, escape as e, current, fmt, rows, lanes, connect, isFour, laneRecords, phases, eventSchedule, groupNumber, rankedRows, rankMovement, rankComparisonLabel } from './common.js';
 
 const PAGE_SIZE = 8;
 let state, page = 0, viewKey;
@@ -27,7 +27,7 @@ function carCaption(p) {
 
 function context() {
   const display = state.display, d = state.divisions[display.division], r = current(d);
-  return { display, d, r, list: rows(d, r) };
+  return { display, d, r, list: rankedRows(state,display.division) };
 }
 function roundPath(display, r) {
   return `<nav class="round-path" aria-label="본선 라운드">${phases.map((name,i)=>`<span class="${display.run===i?'active':''}">${name}</span>`).join('<i>›</i>')}</nav>`;
@@ -62,7 +62,7 @@ function podium(list) {
 function rankCard(p) {
   if (!p) return '<article class="ranking-row empty-ranking"><span>✦</span><p>다음 주인공을 기다려요</p></article>';
   const tier = p.rank && p.rank <= 3 ? p.rank : 'base';
-  return `<article class="ranking-row rank-tier-${tier} ${!p.rank ? 'unranked' : ''}"><div class="rank-badge">${p.rank ? `<b>${p.rank}</b><small>위</small>` : '<small>대기</small>'}</div><div class="rank-main"><h3 title="${e(p.name)}">${e(p.name)}</h3></div><div class="rank-result ${p.best >= 10000 ? 'long-time' : ''}"><strong>${Number.isFinite(p.best) ? fmt(p.best) : p.complete ? 'DNF' : '대기'}</strong>${Number.isFinite(p.best) ? '<small>초</small>' : ''}${p.tieBreak != null ? `<span class="rank-tiebreak">재경기 ${fmt(p.tieBreak)}</span>` : ''}</div><div class="rank-photo">${profile(p)}</div><div class="rank-car"><span>#${e(p.car)}</span>${carCaption(p)}</div></article>`;
+  return `<article class="ranking-row rank-tier-${tier} ${!p.rank ? 'unranked' : ''}"><div class="rank-badge">${p.rank ? `<b>${p.rank}</b><small>위</small>` : '<small>—</small>'}${rankMovement(p)}</div><div class="rank-main"><h3 title="${e(p.name)}">${e(p.name)}</h3></div><div class="rank-result ${p.best >= 10000 ? 'long-time' : ''}"><strong>${Number.isFinite(p.best) ? fmt(p.best) : p.times.some(t=>t!==null) ? 'DNF' : '대기'}</strong>${Number.isFinite(p.best) ? '<small>초</small>' : ''}${p.tieBreak != null ? `<span class="rank-tiebreak">재경기 ${fmt(p.tieBreak)}</span>` : ''}</div><div class="rank-photo">${profile(p)}</div><div class="rank-car"><span>#${e(p.car)}</span>${carCaption(p)}</div></article>`;
 }
 
 function renderBoard() {
@@ -74,7 +74,7 @@ function renderBoard() {
   page %= pages;
   const offset = page * PAGE_SIZE, completed = list.filter(p => p.complete).length;
   const slots = Array.from({ length: final ? Math.min(PAGE_SIZE,Math.max(4,boardList.length)) : PAGE_SIZE }, (_, i) => boardList[offset + i]);
-  $('#leaderboard').innerHTML = `<header class="board-heading"><div class="board-eyebrow"><span>${final ? 'FINAL RESULTS' : 'LIVE LEADERBOARD'}</span><span class="board-live">${final ? 'FINAL' : 'LIVE'}</span></div><h2>${final ? '최종 순위' : r ? rankingMode ? '전체 순위' : '실시간 순위' : '출발을 기다려요'}</h2><div class="board-sub"><span>${d.name} · ${r ? `본선 ${display.run+1}라운드` : '본선 준비'}</span><b>${r ? `${completed} / ${list.length}명 완료` : `${d.participants.length}명 참가`}</b></div><progress value="${completed}" max="${Math.max(1, list.length)}" aria-label="기록 입력 완료"></progress></header><div class="rank-grid ${final ? 'final-grid' : ''}">${slots.map(rankCard).join('')}</div><footer class="board-footer"><div class="advance-note">${final ? '<b>모든 참가자에게 큰 박수를!</b>' : '<b>함께 달리고, 함께 응원해요!</b>'}</div><div class="board-legend"><span>네 번 중 <b>가장 빠른 기록</b> 기준${final ? '' : ' · 잠정 순위'}</span><span>${rankingMode ? `${page + 1} / ${pages}` : final ? 'FINAL' : r ? 'TOP 8' : 'READY'}</span></div></footer>`;
+  $('#leaderboard').innerHTML = `<header class="board-heading"><div class="board-eyebrow"><span>${final ? 'FINAL RESULTS' : 'LIVE LEADERBOARD'}</span><span class="board-live">${final ? 'FINAL' : 'LIVE'}</span></div><h2>${final ? '최종 순위' : r ? rankingMode ? '전체 순위' : '실시간 순위' : '출발을 기다려요'}</h2><div class="board-sub"><span>${d.name} · ${r ? `본선 ${display.run+1}라운드` : '본선 준비'}</span><b>${r ? `${completed} / ${list.length}명 완료` : `${d.participants.length}명 참가`}</b></div><progress value="${completed}" max="${Math.max(1, list.length)}" aria-label="기록 입력 완료"></progress></header><div class="rank-grid ${final ? 'final-grid' : ''}">${slots.map(rankCard).join('')}</div><footer class="board-footer"><div class="advance-note"><b class="movement-legend">${rankComparisonLabel(list)} · <span class="up">▲ 상승</span> <span class="down">▼ 하락</span></b></div><div class="board-legend"><span>네 번 중 <b>가장 빠른 기록</b> 기준${final ? '' : ' · 잠정 순위'}</span><span>${rankingMode ? `${page + 1} / ${pages}` : final ? 'FINAL' : r ? 'TOP 8' : 'READY'}</span></div></footer>`;
 }
 function render() {
   const { display, d, r, list } = context();

@@ -234,3 +234,11 @@ progress{margin-top:1cqh}
 @keyframes personal-best-glow{0%,100%{box-shadow:inset 0 0 0 2px #d7a017,0 0 .25cqw #ffd64f55}50%{box-shadow:inset 0 0 0 2px #d7a017,0 0 .65cqw #ffc83dbb}}
 @media(prefers-reduced-motion:reduce){.lane-history .best-record{animation:none}}
 @media(max-width:700px) and (orientation:portrait){.lane-history .best-label{font-size:1.5cqw}}
+/* Movement relative to the previous completed round, beside each TV ranking. */
+.rank-badge{flex-wrap:wrap;column-gap:.1cqw;row-gap:.2cqh}
+.rank-movement{display:inline-block;font-family:Arial,'Malgun Gothic',sans-serif;font-size:.76cqw;font-weight:800;line-height:1.1;white-space:nowrap;text-shadow:none;font-variant-numeric:tabular-nums}
+.rank-badge .rank-movement{flex-basis:100%;text-align:center}
+.rank-movement.up,.movement-legend .up{color:#d6243d}.rank-movement.down,.movement-legend .down{color:#1768c8}.rank-movement.same{color:#7b8da3}.rank-movement.new{color:#997000;font-size:.58cqw}
+.rank-tier-1 .rank-movement.up{color:#ff8190}.rank-tier-1 .rank-movement.down{color:#7dc5ff}.rank-tier-1 .rank-movement.same{color:#b3cbe8}.rank-tier-1 .rank-movement.new{color:#ffe186}
+.advance-note .movement-legend{font-size:.84cqw}
+@media(max-width:700px) and (orientation:portrait){.rank-movement{font-size:2.4cqw}.rank-movement.new{font-size:1.9cqw}.advance-note .movement-legend{font-size:2.7cqw}}

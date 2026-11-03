@@ -82,7 +82,8 @@ function player(id) { return state.divisions.awana.participants.find(p=>p.id===i
 function render() {
   if(!state)return;
   const draw=numberDraw(state.divisions.awana.participants),shown=draw.groups.flat().filter(p=>p&&visible.has(p.id)).length;
-  $('#draw-count').innerHTML=`${shown} <small>/ 40명</small>`;
+  const target=state.divisions.awana.participants.length===39?39:40;
+  $('#draw-count').innerHTML=`${shown} <small>/ ${target}명</small>`;
   $('#draw-grid').innerHTML=draw.groups.map((group,i)=>{
     const count=group.filter(p=>p&&visible.has(p.id)).length;
     return `<article class="team ${count===4?'full':''} ${group.some(p=>p?.id===recent)?'recent':''}"><div class="team-head"><strong><b>${i+1}</b>조</strong><span>${i*4+1}~${i*4+4}번 · ${count}/4명</span></div><div class="team-members">${group.map((p,j)=>{
@@ -90,7 +91,7 @@ function render() {
       return `<div class="member ${show?'':'empty'} ${show&&p.id===recent?'new':''}" data-number="${number}"><span class="ticket">${String(number).padStart(2,'0')}</span>${show?`${portrait(p)}${identity(p)}`:'<strong>친구를 기다려요</strong>'}</div>`;
     }).join('')}</div></article>`;
   }).join('');
-  $('#draw-message').textContent=draw.invalid.length?`번호 확인이 필요한 선수 ${draw.invalid.length}명 · 진행자에게 알려 주세요`:shown===40?'40명 모두 우리 조에 도착했어요!':running?'우리 조로 이동하는 중이에요!':'뽑은 번호를 지정하면 우리 조로 출발해요';
+  $('#draw-message').textContent=draw.invalid.length?`번호 확인이 필요한 선수 ${draw.invalid.length}명 · 진행자에게 알려 주세요`:shown===target?`${target}명 모두 우리 조에 도착했어요!`:running?'우리 조로 이동하는 중이에요!':'뽑은 번호를 지정하면 우리 조로 출발해요';
 }
 function validPlayer(id) {return numberDraw(state.divisions.awana.participants).groups.flat().find(p=>p?.id===id);}
 async function play() {

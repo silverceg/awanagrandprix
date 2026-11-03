@@ -48,3 +48,15 @@
 .dual-ranks .entry .identity strong{line-height:1}
 .dual-ranks .entry .result{line-height:1}
 .dual-ranks .entry .result strong{display:block;font-size:1.05cqw;line-height:1}
+/* Previous-round movement: text + arrow so direction is clear without color alone. */
+.rank-movement{display:inline-block;flex:none;font-family:Arial,'Malgun Gothic',sans-serif;font-size:.76cqw;font-weight:800;line-height:1.1;white-space:nowrap;letter-spacing:-.02em;text-shadow:none;font-variant-numeric:tabular-nums}
+.rank-movement.up,.movement-legend .up{color:#ff7180}.rank-movement.down,.movement-legend .down{color:#69b9ff}.rank-movement.same{color:#9bb3ce}.rank-movement.new{color:#ffe186;font-size:.58cqw}
+.rank-place{display:flex;align-items:center;gap:.25cqw;min-width:3.5cqw;flex:none}
+.entry .rank-place .place{width:1.5cqw}.dual-ranks .entry .rank-place .place{width:1.3cqw}
+.medal-position{display:flex;align-items:center;gap:.25cqw}
+.medal-position .rank-movement{font-size:.85cqw}.medal-position .rank-movement.new{font-size:.55cqw}
+.division-spotlights .medal-position{flex-direction:column;align-items:center;gap:.3cqh}
+.division-spotlights .medal-position .rank-movement{font-size:.72cqw}
+.division-spotlights .medal-position .rank-movement.new{font-size:.52cqw}
+footer .movement-legend{font-size:.85cqw;color:#b7cdea}
+.dense .rank-place{min-width:2.8cqw}.dense .rank-movement{font-size:.6cqw}

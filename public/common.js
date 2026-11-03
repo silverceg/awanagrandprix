@@ -1,4 +1,4 @@
-import { isFour, laneRecords } from './race-format.js';
+import { isFour, laneRecords, scheduledRace, legacyOrder } from './race-format.js';
 export { isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, groupNumber, legacyOrder } from './race-format.js';
 export const $ = selector => document.querySelector(selector);
 export { numberDraw } from './draw-model.js';
@@ -81,6 +81,40 @@ export function lanes(r, heat, run) {
   r.groups[heat]?.forEach((id, i) => { result[isFour(r) ? (i + run) % 4 : i] = id; });
   return result;
 }
+// Compare cumulative standings with the end of the previous run, not the previous SSE update.
+// Run-indexed records reconstruct the baseline after refresh/restore without changing saved data.
+export function rankedRows(state, key) {
+  const d=state.divisions[key],r=current(d),list=rows(d,r);
+  if(!isFour(r))return list;
+  const task=scheduledRace(state);
+  let run;
+  if(state.meeting && !legacyOrder(state))run=state.meeting.status==='completed'?3:task?.run??0;
+  else {
+    run=r.status==='completed'?3:Math.max(0,...Object.values(r.results).map(rec=>rec.times.findLastIndex(t=>t!==null)));
+    if(state.display.division===key)run=Math.max(run,state.display.run||0);
+  }
+  run=Math.max(0,Math.min(3,run));
+  const ready=run>0 && r.entrantIds.every(id=>r.results[id].times.slice(0,run).every(t=>t!==null));
+  const previous=ready?new Map(rows(d,{...r,results:Object.fromEntries(r.entrantIds.map(id=>[id,{...r.results[id],times:r.results[id].times.slice(0,run)}]))}).map(p=>[p.id,p.rank])):new Map();
+  return list.map(p=>({...p,comparisonRound:ready?run:null,previousRank:previous.get(p.id)??null,
+    rankChange:ready && p.rank!==null && previous.get(p.id)!=null?previous.get(p.id)-p.rank:null}));
+}
+export function rankMovement(p) {
+  if(!p || p.rank==null || !Object.hasOwn(p,'comparisonRound'))return '';
+  let kind='same',text='—',label='비교할 이전 라운드 순위 없음';
+  if(p.comparisonRound!=null){
+    const base=`${p.comparisonRound}라운드 종료 대비`;
+    if(p.previousRank==null){kind='new';text='NEW';label=`${base} 첫 유효 기록으로 순위 진입`;}
+    else if(p.rankChange>0){kind='up';text=`▲${p.rankChange}`;label=`${base} ${p.rankChange}계단 상승 (${p.previousRank}위 → ${p.rank}위)`;}
+    else if(p.rankChange<0){kind='down';text=`▼${-p.rankChange}`;label=`${base} ${-p.rankChange}계단 하락 (${p.previousRank}위 → ${p.rank}위)`;}
+    else label=`${base} 순위 변동 없음`;
+  }
+  return `<span class="rank-movement ${kind}" aria-label="${escape(label)}" title="${escape(label)}">${text}</span>`;
+}
+export function rankComparisonLabel(list) {
+  const round=list.find(p=>p.comparisonRound!=null)?.comparisonRound;
+  return round?`${round}라운드 종료 대비`:'라운드 종료 후 비교';
+}
 export function ranking(d, r, limit = Infinity, offset = 0) {
   if(isFour(r)){
     const list=rows(d,r).filter(p=>p.times.some(t=>t!==null)).slice(offset,offset+limit);
@@ -118,3 +152,4 @@ export function photoConflicts(items) {
   items.forEach((p,i)=>{if(!p.id||p.saved||p.error)return;const key=p.id+':'+p.field;if(seen.has(key)){conflicts.add(seen.get(key));conflicts.add(i);}else seen.set(key,i);});
   return conflicts;
 }
+
