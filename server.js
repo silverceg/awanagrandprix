@@ -25,7 +25,14 @@ export function createApp({ dataDir = process.env.DATA_DIR || join(root, 'data')
   const sessionCookie = value => `awana_session=${value}; HttpOnly; SameSite=Strict; Path=/; ${production ? 'Secure; ' : ''}`;
   function broadcast(state) {
     const message = `event: state\ndata: ${JSON.stringify(state)}\n\n`;
-    for (const res of clients) { if (!res.write(message)) { res.end(); clients.delete(res); } }
+    for (const res of clients) {
+      if (res.destroyed || res.writableEnded) { clients.delete(res); continue; }
+      // write(false) means the event is buffered, not that the connection failed.
+      // A normal 57/58-player state exceeds the HTTP high-water mark. Keep it
+      // connected so consecutive records and draw reveals are not missed.
+      if (res.writableLength > 1024 * 1024) { res.destroy(); clients.delete(res); continue; }
+      res.write(message);
+    }
   }
   const timer = setInterval(() => {
     for (const res of clients) res.write(': heartbeat\n\n');
