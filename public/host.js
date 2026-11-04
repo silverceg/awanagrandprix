@@ -1,4 +1,5 @@
 import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups, numberedGroups, clearGroupSlot, numberDraw, isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, groupNumber, legacyOrder, matchPhotoFile, photoConflicts } from './common.js';
+import { quickTime } from './quick-entry.js';
 
 let state, revision, division = 'awana', heat = 0, run = 0, history = -1, loggedIn = false, dirty = false, saving = false;
 let passwordRequired = true;
@@ -206,6 +207,58 @@ function followRace(){
   const task=scheduledRace(state) || state.display;
   division=task.division;heat=task.heat;run=task.run;history=-1;
 }
+function recordInputs(form=$('#records-form')) {
+  return [...(form?.querySelectorAll?.('input[data-race-time]') || [])].filter(input=>!input.disabled);
+}
+function focusRecord(input) {
+  input?.focus?.({preventScroll:true});input?.select?.();
+  input?.scrollIntoView?.({block:'center',behavior:'instant'});
+}
+function focusFirstRecord() { focusRecord(recordInputs()[0]); }
+function previewRecord(input,commit=false) {
+  const result=quickTime(input.value,input.dataset.original || '');
+  const preview=document.getElementById('preview-'+input.name);
+  if(preview){preview.textContent=result.ok?result.label:result.empty?'':result.error;preview.className='entry-preview'+(!result.ok&&!result.empty?' invalid':'');}
+  input.setCustomValidity?.(result.ok?'':result.error);
+  if(commit&&result.ok)input.value=result.value;
+  return result;
+}
+function normalizeRecordForm(form) {
+  for(const input of recordInputs(form)) {
+    const result=previewRecord(input,true);
+    if(!result.ok){notify(result.error,true);focusRecord(input);return false;}
+  }
+  return true;
+}
+app.addEventListener('input',event=>{
+  if(event.target.matches?.('input[data-race-time]'))previewRecord(event.target);
+});
+app.addEventListener('focusout',event=>{
+  if(event.target.matches?.('input[data-race-time]'))previewRecord(event.target,true);
+});
+app.addEventListener('keydown',event=>{
+  const form=event.target.closest?.('#records-form');
+  if(!form || event.key!=='Enter' || event.isComposing)return;
+  // Let Enter activate a deliberately focused button, but never implicitly
+  // submit when the operator is still typing a lane or correction reason.
+  if(!event.ctrlKey && !event.metaKey && event.target.tagName==='BUTTON')return;
+  event.preventDefault();
+  if(saving || mediaBusy || event.repeat)return;
+  const fields=recordInputs(form),index=fields.indexOf(event.target);
+  const advance=form.querySelector?.('button[name="move"][value="advance"]');
+  const stay=form.querySelector?.('button[name="move"][value="stay"]');
+  if(event.ctrlKey || event.metaKey) {
+    if(!advance || advance.disabled || !normalizeRecordForm(form))return;
+    form.requestSubmit(advance);return;
+  }
+  if(index>=0){
+    const result=previewRecord(fields[index],true);
+    if(!result.ok){notify(result.error,true);return;}
+    if(fields[index+1]){focusRecord(fields[index+1]);return;}
+  }
+  const review=advance&&!advance.disabled?advance:stay;
+  if(review&&!review.disabled){review.focus?.({preventScroll:true});review.scrollIntoView?.({block:'nearest',behavior:'instant'});notify('레인별 기록을 확인한 뒤 저장 버튼을 누르세요.');}
+});
 function meetingPanel(){
   const legacy=Object.values(state.divisions).some(d=>d.rounds.some(r=>!isFour(r)));
   if(legacy)return '<section class="notice"><b>이전 2회·토너먼트 기록이 있습니다.</b><p>명단·사진·처음 조 편성은 유지하고 새 4회 경기를 준비할 수 있습니다. 기존 기록은 자동 백업 후 초기화됩니다.</p><button id="four-lane-reset">4회 경기로 전환</button></section>';
@@ -222,11 +275,12 @@ function racePanel(d,r){
   const editable=r.status==='active'&&!!task&&position>=0&&position<=state.meeting.cursor;
   const next=live?schedule[state.meeting.cursor+1]:null;
   return `<div class="host-grid"><section class="card"><div class="section-head"><h2>${d.name} · ${groupNumber(state,division,heat)}조 · 본선 ${run+1}라운드 기록</h2><span class="tag">${r.status==='completed'?'종료 · 읽기 전용':live?'현재 경기':'기록 조회'}</span></div>
-  <div class="race-controls"><label>경기 조<select id="heat">${r.groups.map((g,i)=>`<option value="${i}" ${heat===i?'selected':''}>${groupNumber(state,division,i)}조 · ${g.filter(Boolean).length}명</option>`).join('')}</select></label><label>주행<select id="run">${[0,1,2,3].map(i=>`<option value="${i}" ${run===i?'selected':''}>본선 ${i+1}라운드</option>`).join('')}</select></label><button id="broadcast" class="ghost">이 경기를 TV에 표시</button></div>
+  <p><a class="button ghost" href="/recorder" target="_blank" rel="noopener">기록관 전용 입력창 열기 ↗</a></p><div class="race-controls"><label>경기 조<select id="heat">${r.groups.map((g,i)=>`<option value="${i}" ${heat===i?'selected':''}>${groupNumber(state,division,i)}조 · ${g.filter(Boolean).length}명</option>`).join('')}</select></label><label>주행<select id="run">${[0,1,2,3].map(i=>`<option value="${i}" ${run===i?'selected':''}>본선 ${i+1}라운드</option>`).join('')}</select></label><button id="broadcast" class="ghost">이 경기를 TV에 표시</button></div>
   <p class="notice">현재 실제 레인 순서입니다. 다음 주행은 1→2→3→4→1로 이동합니다.</p>
-  <form id="records-form"><div class="lane-inputs">${ids.map((id,i)=>{
+  <form id="records-form"><div class="quick-entry-help"><b>빠른 기록 입력 · 소수점 두 자리</b><span><kbd>321</kbd> → 3.21초 · <kbd>1025</kbd> → 10.25초 · <kbd>Enter</kbd> 다음 레인 · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 저장 후 다음 경기</span><small>1~2자리 숫자는 초입니다: 3 → 3.00초. 3자리 이상은 마지막 두 자리가 소수입니다. 3.21처럼 직접 입력해도 됩니다. 마지막 입력칸에서 Enter를 누르면 확인할 저장 버튼으로 이동합니다.</small></div><div class="lane-inputs">${ids.map((id,i)=>{
     const player=d.participants.find(p=>p.id===id),rec=id&&r.results[id],value=rec?.times[run];
-    return `<div class="lane-input lane-${i+1}"><span class="lane-label">${i+1}레인</span>${id?`<div class="driver"><span class="car">#${e(player.car)}</span><b>${e(player.name)}</b></div><label for="time-${id}">기록 (초)<input id="time-${id}" name="${id}" value="${value===null?'':fmt(value)}" placeholder="0.000" autocomplete="off" inputmode="decimal" required ${!editable?'disabled':''}></label><button type="button" class="small ghost" data-dnf="${id}" ${!editable?'disabled':''}>미완주 DNF</button><div class="host-lane-history">${laneRecords(r,id).map((t,l)=>`<span>${l+1}레인 <b>${fmt(t)}</b></span>`).join('')}</div>`:'<div class="empty">빈 레인</div>'}</div>`;
+    const original=value===null?'':fmt(value);
+    return `<div class="lane-input lane-${i+1}"><span class="lane-label">${i+1}레인</span>${id?`<div class="driver"><span class="car">#${e(player.car)}</span><b>${e(player.name)}</b></div><label for="time-${id}">기록 (초)<input id="time-${id}" name="${id}" data-race-time data-original="${e(original)}" value="${e(original)}" placeholder="3.21" aria-describedby="preview-${id}" autocomplete="off" inputmode="decimal" required ${!editable?'disabled':''}></label><output id="preview-${id}" for="time-${id}" class="entry-preview" aria-live="polite">${value===null?'':e(value==='DNF'?'미완주 DNF':original+'초')}</output><button type="button" class="small ghost" data-dnf="${id}" ${!editable?'disabled':''}>미완주 DNF</button><div class="host-lane-history">${laneRecords(r,id).map((t,l)=>`<span>${l+1}레인 <b>${fmt(t)}</b></span>`).join('')}</div>`:'<div class="empty">빈 레인</div>'}</div>`;
   }).join('')}</div><label>수정 사유 · 기존 기록을 고칠 때 필수<input name="reason" maxlength="200" placeholder="예: 스톱워치 재확인" ${!editable?'disabled':''}></label><div class="form-actions"><button class="primary" name="move" value="advance" ${!editable||!live?'disabled':''}>기록 저장 후 ${next?'다음 경기 →':'전체 경기 마치기'}</button><button class="ghost" name="move" value="stay" ${!editable?'disabled':''}>기록만 저장 · TV 유지</button><button type="button" id="next" class="ghost" ${!live?'disabled':''}>저장한 기록 확인 · 다음 경기 →</button></div></form>
   <p class="hint">${next?`다음: ${state.divisions[next.division].name} ${groupNumber(state,next.division,next.heat)}조 · 본선 ${next.run+1}라운드`:live?'마지막 주행입니다. 완료하면 두 부문의 최종 순위가 확정됩니다.':'현재 경기 입력으로 이동 버튼으로 진행 순서에 돌아가세요.'} 미입력은 —, 미완주는 DNF로 표시합니다. 네 번 중 가장 빠른 유효 기록으로 순위를 정하며 동점은 공동 순위입니다.</p></section>
   <aside class="card"><h2>진행 및 TV 화면</h2><p>현재 TV: ${state.divisions[state.display.division].name} ${groupNumber(state,state.display.division,state.display.heat)}조 · 본선 ${state.display.run+1}라운드</p><button id="rank-tv" class="ghost full">이 부문 순위 TV에 표시</button><p><a href="/leaderboard" target="_blank" rel="noopener">전체 순위 · 두 부문 함께 ↗</a></p><p><a href="/leaderboard?division=both" target="_blank" rel="noopener">두 부문 함께 ↗</a></p><p>TV 선수 카드에 1~4레인별 기록이 누적됩니다. 라운드가 바뀌어도 앞선 기록은 모두 보존됩니다.</p><details><summary>조별 최초 레인 배치</summary>${r.groups.map((g,h)=>`<div class="schedule"><b>${groupNumber(state,division,h)}조</b>${g.map((id,l)=>`<p>${l+1}레인 · ${id?e(d.participants.find(p=>p.id===id).name):'빈칸'}</p>`).join('')}</div>`).join('')}</details></aside></div>`;
@@ -297,7 +351,9 @@ app.addEventListener('change', async event => {
 });
 app.addEventListener('submit', async event => {
   event.preventDefault(); if (saving || mediaBusy) return;
-  const form = event.target, fd = new FormData(form), r = current(state.divisions[division]);
+  const form = event.target, r = current(state.divisions[division]);
+  if(form.getAttribute('id')==='records-form'&&!normalizeRecordForm(form))return;
+  const fd = new FormData(form);
   if (form.getAttribute('id') === 'single-participant-form') await action('participants', { prepareDraw:division==='awana', entries:[{name:fd.get('name'),car:fd.get('car'),carName:fd.get('carName')}] });
   if(form.getAttribute('id')==='assign-draw-form'){await action('assign-draw-number',{id:fd.get('id'),number:fd.get('number')});return;}
   if (form.getAttribute('id') === 'participant-edit-form') {
@@ -324,9 +380,16 @@ app.addEventListener('submit', async event => {
     await action(r?'groups':'start',{groups,...(r?{roundId:r.id}:{})},()=>{if(state.meeting)followRace();else{heat=run=0;history=-1;}});
   }
   if (form.getAttribute('id') === 'records-form') {
-    const records = Object.fromEntries(lanes(r, heat, run).filter(Boolean).map(id => [id, fd.get(id).trim().toUpperCase()]));
+    const records={};
+    for(const id of lanes(r,heat,run).filter(Boolean)){
+      const result=quickTime(fd.get(id),r.results[id].times[run]===null?'':fmt(r.results[id].times[run]));
+      if(!result.ok){notify(result.error,true);return;}
+      records[id]=result.value;
+    }
     const advance=isFour(r) && event.submitter?.value==='advance';
-    await action('records', { roundId: r.id, heat, run, records, reason: fd.get('reason'), advance },()=>{if(advance)followRace();});
+    if(advance&&run===3&&heat===r.groups.length-1&&!confirm(`${state.divisions[division].name}의 마지막 주행입니다. 저장 후 다음으로 넘기면 이 부문 기록이 잠깁니다. 모든 기록을 확인했고 종료할까요?`))return;
+    const ok=await action('records', { roundId: r.id, heat, run, records, reason: fd.get('reason'), advance },()=>{if(advance)followRace();});
+    if(ok&&advance)focusFirstRecord();
   }
   if (form.getAttribute('id') === 'tie-form') await action('tiebreak', { roundId: r.id, ...Object.fromEntries(fd) });
   if (form.getAttribute('id') === 'car-name-form') await action('car-name', { id: fd.get('id'), carName: fd.get('carName').trim() });
@@ -338,7 +401,7 @@ app.addEventListener('submit', async event => {
 app.addEventListener('click', async event => {
   try {
   const b = event.target.closest('button'); if (!b || saving || mediaBusy) return;
-  if(b.id==='follow-race' && clean()){followRace();render();return;}
+  if(b.id==='follow-race' && clean()){followRace();render();focusFirstRecord();return;}
   if(b.id==='four-lane-reset' && clean()){
     if(confirm('기존 주행 기록은 백업하고, 명단·사진·처음 조 편성을 유지한 채 새 4회 경기를 준비할까요?'))
       await action('four-lane-reset',{confirmation:'4회 경기로 전환'},()=>{heat=run=0;history=-1;});
@@ -365,7 +428,7 @@ app.addEventListener('click', async event => {
   if(b.id==='save-bulk-photos'){await saveBulkPhotos();return;}
   if (b.id === 'cancel-edit') {closeRosterDialog();return;}
   if (b.dataset.removePhoto) { const field=b.dataset.removePhoto;photoDraft[field]='';dirty=true;$('#preview-'+field).innerHTML=field==='photoData'?'선수 사진':'자동차 사진';return; }
-  if (b.dataset.dnf) { document.getElementById('time-' + b.dataset.dnf).value = 'DNF'; dirty = true; return; }
+  if (b.dataset.dnf) { const input=document.getElementById('time-' + b.dataset.dnf);input.value = 'DNF';previewRecord(input,true);focusRecord(input);dirty = true; return; }
   if (b.dataset.division && clean()) { division = b.dataset.division; editorId=null;photoDraft={}; heat = run = 0; history = -1; render(); }
   if (b.dataset.delete && confirm('이 참가자를 삭제할까요?')) await action('participant-delete', { id: b.dataset.delete });
   if (b.id === 'prepare-groups') { const panel=$('.manual-panel');if(panel){panel.open=true;panel.scrollIntoView({behavior:'smooth',block:'start'});}return; }
@@ -373,7 +436,7 @@ app.addEventListener('click', async event => {
   if (b.id === 'broadcast' || b.id === 'rank-tv') { if (clean()) await action('display', { heat, run, mode: b.id === 'broadcast' ? 'race' : 'ranking' }); }
   const r = current(state.divisions[division]);
   if (b.id === 'next' && clean()) {
-    if(isFour(r)){await action('next-race',{roundId:r.id,heat,run},followRace);return;}
+    if(isFour(r)){if(run===3&&heat===r.groups.length-1&&!confirm(`${state.divisions[division].name}의 모든 기록을 확인했나요? 다음으로 넘기면 이 부문 기록이 잠깁니다.`))return;const ok=await action('next-race',{roundId:r.id,heat,run},followRace);if(ok)focusFirstRecord();return;}
     if (!r.groups[heat].filter(Boolean).every(id => r.results[id].times[run] !== null) && !confirm('현재 주행 기록이 아직 없습니다. 다음 주행으로 이동할까요?')) return;
     let nextHeat = heat, nextRun = run;
     if (run === 0) nextRun = 1; else if (heat < r.groups.length - 1) { nextHeat++; nextRun = 0; } else { notify('마지막 주행입니다. 모든 기록을 확인한 뒤 라운드를 종료하세요.'); return; }

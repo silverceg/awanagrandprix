@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>기록관 · 어와나 그랑프리</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/recorder.css"><script type="module" src="/recorder.js"></script></head>
+<body>
+<header><a href="/host" class="brand">AWANA <b>GRAND PRIX</b><small>기록관 전용</small></a><div class="header-actions"><span id="connection" class="connection">● 연결 중</span><a href="/host" target="_blank" rel="noopener">호스트 열기 ↗</a></div></header>
+<main>
+<section id="login" class="login panel" hidden><h1>기록관 입장</h1><p>호스트와 같은 진행자 비밀번호를 사용합니다.</p><form id="login-form"><label for="pin">진행자 비밀번호</label><input id="pin" type="password" autocomplete="current-password" required minlength="8"><button type="submit" class="primary">입장하기</button></form></section>
+<div id="stale" class="stale" role="alert" hidden><strong>다른 창에서 경기 정보가 바뀌었습니다.</strong><span>입력한 값은 이 화면에 남아 있습니다. 현재 경기와 저장 기록을 확인한 후 이어가세요.</span><button id="refresh" type="button">최신 경기 확인</button></div>
+<div id="message" class="message" role="status" aria-live="polite" hidden></div>
+<div id="recorder" hidden></div>
+</main>
+</body></html>
