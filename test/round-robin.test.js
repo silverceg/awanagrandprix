@@ -17,7 +17,7 @@ function fixture(){
  }
  return s;
 }
-function record(s){const t=scheduledRace(s),r=s.divisions[t.division].rounds[0];mutate(s,'records',{division:t.division,roundId:r.id,heat:t.heat,run:t.run,advance:true,records:Object.fromEntries(lanesFor(r,t.heat,t.run).filter(Boolean).map(id=>[id,'3.100']))});}
+function record(s){const t=scheduledRace(s),r=s.divisions[t.division].rounds[0];mutate(s,'records',{division:t.division,roundId:r.id,heat:t.heat,run:t.run,advance:true,records:Object.fromEntries(lanesFor(r,t.heat,t.run).filter(Boolean).map(id=>[id,'3.10']))});}
 test('40+18명: 본선 매 라운드 1~15조, 모든 레인 한 번씩, 끝까지 명단 유지',()=>{
  const s=fixture(),plan=eventSchedule(s);
  assert.equal(plan.length,60);assert.equal(s.meeting.order,'round-robin');
@@ -40,7 +40,7 @@ test('40+18명: 본선 매 라운드 1~15조, 모든 레인 한 번씩, 끝까�
 test('경기 전에도 40+18 빈 순위표, 일반부 큰 카드는 1위 하나, 예선·진출 문구 없음',()=>{
  const s=fixture(),html=renderBoard(s);
  assert.equal((html.match(/class="entry empty"/g)||[]).length,58);
- assert.equal((html.match(/class="spotlight /g)||[]).length,4);
+ assert.equal((html.match(/class="spotlight /g)||[]).length,5); // Awana 1·2·3·3, general first place.
  const open=html.slice(html.indexOf('data-board-division="open"'));
  assert.equal((open.match(/class="spotlight /g)||[]).length,1);
  assert.doesNotMatch(html,/예선|상위 16|준결승/);assert.doesNotMatch(html,/awana0|open0/);

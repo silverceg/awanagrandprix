@@ -33,9 +33,9 @@ test('첫 주행 DNF는 TV 순위에 대기가 아닌 DNF로 표시되고 이후
   mutate(s,'records',{division:'awana',roundId:r.id,heat:0,run:0,records});
   const failed=render(s).rank.match(/<article class="ranking-row[^>]* unranked"[\s\S]*?<\/article>/)?.[0];
   assert.ok(failed);assert.match(failed,/<strong>DNF<\/strong>/);assert.doesNotMatch(failed,/대기/);
-  records[r.entrantIds[0]]='2.900';
+  records[r.entrantIds[0]]='2.90';
   mutate(s,'records',{division:'awana',roundId:r.id,heat:0,run:0,records,reason:'기록 오입력 정정'});
-  assert.match(render(s).rank,/2\.900/);assert.doesNotMatch(render(s).rank,/unranked/);
+  assert.match(render(s).rank,/2\.90/);assert.doesNotMatch(render(s).rank,/unranked/);
 });
 
 test('39+18명 전체 60경기: TV·전체 순위·지난 라운드 변동·레인별 기록이 서버 결과와 일치',()=>{
@@ -52,7 +52,7 @@ test('39+18명 전체 60경기: TV·전체 순위·지난 라운드 변동·레�
       if(!id)return;
       const number=Number(d.participants.find(p=>p.id===id).car);
       const time=number===2 || (number+task.run)%9===0 ? 'DNF' : 2800+((number*7+task.run*11)%12)*30;
-      records[id]=time==='DNF'?time:(time/1000).toFixed(3);
+      records[id]=time==='DNF'?time:(time/1000).toFixed(2);
       const saved=history.get(id)||[null,null,null,null];saved[lane]=time;history.set(id,saved);
     });
     const body={division:task.division,roundId:r.id,heat:task.heat,run:task.run};
@@ -76,6 +76,10 @@ test('39+18명 전체 60경기: TV·전체 순위·지난 라운드 변동·레�
     mutate(s,'next-race',body);steps++;
   }
   assert.equal(steps,60);assert.equal(history.size,57);
-  assert.match(renderBoard(s),/본선 최종 결과/);assert.match(render(s).rank,/최종 순위/);
+  assert.match(renderBoard(s),/본선 최종 결과/);
+  const finalTV=render(s).screen;
+  assert.match(finalTV,/스피드 수상자/);
+  assert.equal((finalTV.match(/class="award-card /g)||[]).length,6);
+  assert.doesNotMatch(finalTV,/class="lane-card /);
   for(const key of ['awana','open'])assert.ok(common.rankedRows(s,key).every(p=>p.comparisonRound===3));
 });

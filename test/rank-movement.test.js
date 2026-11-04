@@ -27,7 +27,7 @@ test('1라운드에는 비교 화살표가 없고, 2라운드는 이전 종료 �
   assert.doesNotMatch(renderBoard(s),/rank-movement (up|down)/);
   round(s,1);const r=common.current(s.divisions.awana);r.results[r.entrantIds[2]].times[1]=2900;
   const before=structuredClone(s),list=byNumber(s);
-  assert.deepEqual(list.map(p=>[p.previousRank,p.rank,p.rankChange]),[[1,2,-1],[2,3,-1],[3,1,2],[4,4,0]]);
+  assert.deepEqual(list.map(p=>[p.previousRank,p.rank,p.rankChange]),[[1,2,-1],[2,3,-1],[3,1,2],[3,3,0]]);
   assert.match(common.rankMovement(list[2]),/class="rank-movement up"/);assert.match(common.rankMovement(list[2]),/▲2/);
   assert.match(common.rankMovement(list[0]),/▼1/);assert.match(common.rankMovement(list[3]),/변동 없음/);
   assert.deepEqual(s,before);
@@ -41,14 +41,14 @@ test('비교 기준은 현재 라운드 입력 중 고정되고 다음 라운드
   s.revision++;assert.equal(byNumber(s)[2].rankChange,2);
   round(s,2);assert.ok(byNumber(s).every(p=>p.rankChange===0));
   r.results[r.entrantIds[3]].times[2]=2800;
-  assert.deepEqual(byNumber(s).map(p=>p.rankChange),[-1,-1,-1,3]);
+  assert.deepEqual(byNumber(s).map(p=>p.rankChange),[-1,0,-1,2]);
   assert.equal(byNumber(s)[3].comparisonRound,2);
 });
 
 test('직전 주행 기록만이 아니라 이전까지 누적 최고 기록 순위를 비교',()=>{
   const s=fixture();round(s,2);
   records(s,'awana',[[2900,3300,null,null],[3000,2800,null,null],[3100,3050,2700,null],[3200,3400,null,null]]);
-  assert.deepEqual(byNumber(s).map(p=>p.previousRank),[2,1,3,4]);
+  assert.deepEqual(byNumber(s).map(p=>p.previousRank),[2,1,3,3]);
   assert.equal(byNumber(s)[2].rankChange,2);
 });
 
@@ -72,7 +72,7 @@ test('두 부문 별도 비교, 최종 4라운드는 3라운드 누적 대비, �
   assert.equal(byNumber(s)[2].rankChange,2);
   s.meeting.status='completed';
   records(s,'awana',[[3000,3200,3300,3400],[3100,3300,3400,3500],[3200,2900,3300,3400],[3300,3400,3500,2800]]);
-  const list=byNumber(s);assert.equal(list[3].rankChange,3);assert.equal(list[3].comparisonRound,3);
+  const list=byNumber(s);assert.equal(list[3].rankChange,2);assert.equal(list[3].comparisonRound,3);
   mutate(s,'reset-records',{confirmation:'기록 초기화'});
   assert.deepEqual(common.rankedRows(s,'awana'),[]);assert.doesNotMatch(renderBoard(s),/rank-movement /);
 });
