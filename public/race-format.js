@@ -1,6 +1,9 @@
 // Shared by server and all screens: run-indexed storage, physical-lane display.
 export const isFour = r => r?.format === 'four-lanes';
 export const runCount = r => isFour(r) ? 4 : 2;
+// The Awana speed awards share third place between the third and fourth ranks.
+// Keep the underlying times and ordering intact, including genuine tied times.
+export const displayRank = (division, round, rank) => isFour(round) && division?.name === '어와나' && rank === 4 ? 3 : rank;
 export function laneRecords(r, id) {
   const result = [null, null, null, null];
   const group = r?.groups.find(g => g.includes(id));

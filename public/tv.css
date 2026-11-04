@@ -242,3 +242,124 @@ progress{margin-top:1cqh}
 .rank-tier-1 .rank-movement.up{color:#ff8190}.rank-tier-1 .rank-movement.down{color:#7dc5ff}.rank-tier-1 .rank-movement.same{color:#b3cbe8}.rank-tier-1 .rank-movement.new{color:#ffe186}
 .advance-note .movement-legend{font-size:.84cqw}
 @media(max-width:700px) and (orientation:portrait){.rank-movement{font-size:2.4cqw}.rank-movement.new{font-size:1.9cqw}.advance-note .movement-legend{font-size:2.7cqw}}
+
+/* Keep the four driver/car/history cards in two thirds of the TV height. */
+@media (min-width:701px), (orientation:landscape) {
+  .stage{grid-template-rows:8cqh minmax(0,1fr) 8cqh}
+  #screen,#screen.four-lane-screen{grid-template-rows:minmax(0,1fr) 66cqh}
+  .hero{overflow:hidden}
+  .hero-art{top:0;height:100%;width:62%;left:auto;right:-2.2cqw;object-fit:cover;object-position:65% 58%}
+  .hero-shade{inset:0 -2.2cqw;background:linear-gradient(90deg,#075ad9 0,#075ad9ef 36%,#075ad900 72%)}
+  .hero-meta{padding-top:1.2cqh;gap:.6cqw}
+  .division-badge{font-size:.9cqw}.division-badge b{font-size:.75cqw}
+  .round-path{font-size:.6cqw;gap:.25cqw;padding:.3cqh .25cqw}
+  .round-path span{padding:.35cqh .35cqw}
+  .hero-copy,.four-lane-screen .hero-copy{top:6cqh;left:0;max-width:70%}
+  .hero-kicker{font-size:.85cqw;line-height:1.15}
+  .poster-title,.four-lane-screen .poster-title{font-size:3cqw;line-height:1;margin:.7cqh 0 .4cqh;transform:none;white-space:nowrap}
+  .poster-title br{display:none}.poster-title em{margin-left:.12em}
+  .hero-message,.four-lane-screen .hero-message{font-size:.8cqw;line-height:1.2;margin:.6cqh 0 0}
+  .cheer-sticker{width:4.2cqw;height:4.2cqw;right:1cqw;top:7cqh;font-size:.65cqw}
+  .cheer-sticker b{font-size:.9cqw}.cheer-sticker i{font-size:1.4cqw}
+  .hero-footnote{display:none}
+  .hero-person{margin:.35cqh 0;gap:.7cqw}
+  .hero-person h1{font-size:2.1cqw}.hero-person .profile-photo{width:3cqw}
+  .champion-record{font-size:2cqw;line-height:1.1}
+  .champion-record>small{font-size:.7cqw}.champion-record>span{font-size:.6cqw;margin-top:.3cqh}
+  .hero-leader .hero-message,.hero-winner .hero-message{display:none}
+  .trophy-wrap{top:5cqh;width:12%;right:2cqw}.trophy-wrap>span{font-size:.8cqw}
+  .race-deck{grid-template-rows:5.5cqh minmax(0,1fr);padding-bottom:1cqh}
+  .deck-heading h2{font-size:1.7cqw}.deck-heading h2>b{font-size:2.5cqw}
+  .deck-heading h2>span{font-size:1.05cqw}.deck-note{font-size:.75cqw}
+  .lane-card.split-card{grid-template-rows:minmax(0,1fr) 13cqh}
+  .four-lane-screen .lane-card.split-card{grid-template-rows:minmax(0,1fr) 13cqh 13cqh}
+  .lane-card>.profile-photo,.four-lane-screen .lane-card>.profile-photo{width:calc(100% - .8cqw);height:calc(100% - 4cqh);max-height:28cqh;aspect-ratio:auto;border-width:.28cqw;border-bottom-width:.45cqw;border-radius:.65cqw;transform:rotate(1deg)}
+  .lane-card>.profile-photo>img{object-fit:cover;object-position:center 38%;background:#e8f1fc}
+  .lane-card .card-details{padding:1.2cqh .7cqw;gap:1.2cqh}
+  .lane-card .lane-id{width:1.6cqw;height:1.6cqw;font-size:1.05cqw}
+  .lane-card .lane-top>b{font-size:.85cqw}
+  .lane-card h3{font-size:1.85cqw;line-height:1.2}
+  .lane-card .lane-time{font-size:2.2cqw;line-height:1.1}
+  .lane-card .lane-time.dnf,.lane-card .ready-label{font-size:1.7cqw}
+  .lane-card>.car-caption{gap:.7cqw;padding:.7cqh .65cqw;font-size:1.3cqw}
+  .lane-card>.car-caption .car-thumbnail{width:7.3cqw;height:8.3cqh;border-radius:.55cqw}
+  .lane-card>.car-caption>svg{width:4.2cqw;height:3cqw}
+  .lane-history{padding:.6cqh .5cqw;gap:.5cqh .4cqw}
+  .lane-history>div{display:grid;grid-template-columns:minmax(0,1fr);align-content:center;gap:.3cqh;padding:.4cqh .5cqw}
+  .lane-history small{flex-direction:row;align-items:center;gap:.35cqw;font-size:.8cqw;line-height:1.1}
+  .lane-history b{font-size:1.4cqw;line-height:1.05;letter-spacing:-.035em}
+  .lane-history .best-label{font-size:.52cqw}
+  .ticker{gap:.8cqw}.ticker-label{font-size:.7cqw;padding:.8cqh .8cqw;flex:none}
+  .ticker p{display:flex;flex-direction:column;justify-content:center;gap:.6cqh;flex:1;font-size:.85cqw;line-height:1.15;overflow:visible;white-space:normal;text-overflow:clip}
+  .next-race-title{display:block;color:#cde6ff;font-size:.85cqw;white-space:nowrap}
+  .next-roster{display:flex;flex-wrap:wrap;gap:.2cqh .85cqw;font-size:1.05cqw;line-height:1.15;color:white}
+  .next-player{white-space:nowrap}.next-player small{font-family:Arial,sans-serif;font-size:.72em;color:#cde6ff}
+  .ticker time{font-size:.75cqw;flex:none;align-self:center}
+  .ranking-row{grid-template-columns:2cqw minmax(0,1fr) 5.2cqw 4.6cqw;grid-template-rows:minmax(0,1fr) 2.4cqh;column-gap:.45cqw}
+  .rank-photo .profile-photo{width:100%;height:100%;max-width:none;max-height:9cqh;aspect-ratio:1}
+  .rank-photo .profile-photo>img{object-fit:cover;object-position:center 38%}
+  .rank-car>.car-caption{font-size:.9cqw}.rank-car>.car-caption .car-thumbnail{width:2.5cqw;height:2.2cqh}
+}
+@media(max-width:700px) and (orientation:portrait){
+  .stage{grid-template-rows:75px minmax(0,1fr) minmax(95px,auto)}
+  .ticker{align-items:center;padding:10px 0}.ticker p{white-space:normal;overflow:visible;font-size:2.7cqw;line-height:1.3}
+  .next-race-title{display:block;font-size:2.5cqw;margin-bottom:5px}.next-roster{display:flex;flex-wrap:wrap;gap:3px 2cqw;font-size:3cqw}.next-player{white-space:nowrap}.next-player small{font-family:Arial,sans-serif;font-size:.75em;color:#cde6ff}
+  .ticker time{align-self:flex-start;flex:none}
+}
+
+/* Final-round contenders glow gently, without obscuring their faces or times. */
+.ranking-row.award-contender{border:2px solid #d9a119;box-shadow:inset 0 0 0 1px #ffe693,0 0 .5cqw #dca50055;animation:tv-award-glow 3.2s ease-in-out infinite}
+.ranking-row.award-contender.rank-tier-1{border-color:#ffe26b}
+@keyframes tv-award-glow{0%,100%{box-shadow:inset 0 0 0 1px #ffe693,0 0 .25cqw #dca50033}50%{box-shadow:inset 0 0 0 1px #ffe693,0 0 .65cqw #dca50099}}
+
+/* The same audience screen celebrates both divisions after the host finishes. */
+.broadcast.awards-screen{grid-template-columns:minmax(0,1fr)}
+.awards-screen>.leaderboard{display:none}
+.awards-screen>.stage{grid-template-rows:8cqh minmax(0,1fr) 6cqh;background:radial-gradient(ellipse at 50% 0,#195caa 0,#102f63 48%,#071c40 100%)}
+#screen.awards-content{grid-template-rows:10cqh minmax(0,1fr);gap:1.5cqh;padding-bottom:1.5cqh}
+.awards-heading{display:flex;align-items:center;justify-content:space-between;gap:2cqw;min-width:0}
+.awards-heading>div>span{font:700 .7cqw/1.1 Arial,sans-serif;letter-spacing:.16em;color:#ffe175}
+.awards-heading h1{font-size:2.6cqw;font-weight:400;margin:.5cqh 0 0;color:#fff5ce;line-height:1.1}
+.awards-heading p{font-size:1.2cqw;margin:0;color:#cfdef4}
+.award-divisions{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1.2cqw;min-height:0}
+.award-division{display:grid;grid-template-rows:4.5cqh minmax(0,1fr);gap:.8cqh;min-width:0;min-height:0}
+.award-division>header{display:flex;align-items:center;gap:.7cqw;padding:0 .4cqw}
+.award-division h2{font-size:1.8cqw;font-weight:400;margin:0;color:#ffe382}
+.award-division>header>span{font-size:.9cqw;color:#d1e1f6}
+.award-division>header>.award-page-count{margin-left:auto;white-space:nowrap;color:#ffe382;font:700 .85cqw/1.1 Arial,sans-serif}
+.award-page-count small{display:block;margin-top:.3cqh;color:#bdcfe7;font:400 .6cqw/1.1 Jua,sans-serif}
+.award-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:1.1cqh .85cqw;min-height:0;min-width:0}
+.award-open .award-grid{grid-template-columns:minmax(0,1fr)}
+.award-card{--medal:#e8b94e;display:grid;grid-template-columns:46% minmax(0,1fr);grid-template-rows:minmax(0,1fr) 9.5cqh;min-width:0;min-height:0;background:linear-gradient(145deg,#fffdf4,#eff5ff);color:#123565;border:2px solid var(--medal);border-radius:1cqw;overflow:hidden;box-shadow:0 .2cqw .8cqw #0003}
+.award-card.award-place-2{--medal:#c6d8ed}
+.award-card.award-place-3{--medal:#d6a07f}
+.award-card>.profile-photo{grid-column:1;grid-row:1;align-self:center;justify-self:center;width:calc(100% - 1.7cqw);height:calc(100% - 2.5cqh);aspect-ratio:auto;border:.3cqw solid white;border-bottom-width:.6cqw;border-radius:.7cqw;box-shadow:0 .2cqw .65cqw #1a386a22;transform:rotate(-1deg)}
+.award-card>.profile-photo>img{object-fit:cover;object-position:center 38%}
+.award-details{grid-column:2;grid-row:1;display:flex;flex-direction:column;justify-content:center;gap:.7cqh;min-width:0;padding:1.1cqh 1cqw 1.1cqh .2cqw}
+.award-rank{font-size:1.05cqw;color:#7b570b;white-space:nowrap}
+.award-rank b{font:400 3cqw/1 'Lilita One',Jua,sans-serif;margin:0 .2cqw;color:#a67408}
+.award-place-2 .award-rank,.award-place-2 .award-rank b{color:#526c8b}
+.award-place-3 .award-rank,.award-place-3 .award-rank b{color:#9e6240}
+.award-details h3{font-size:2cqw;font-weight:400;line-height:1.12;margin:0;overflow-wrap:anywhere}
+.award-number{font:700 .8cqw/1.1 Arial,sans-serif;color:#6f829b}
+.award-time{font:800 2.05cqw/1.15 Arial,sans-serif;letter-spacing:-.04em;color:#123565;white-space:nowrap;font-variant-numeric:tabular-nums}
+.award-time small{font:400 .85cqw/1 Jua,sans-serif;margin-left:.3cqw}
+.award-card>.car-caption{grid-column:1/-1;grid-row:2;justify-content:flex-start;gap:.9cqw;padding:.6cqh .8cqw;background:#e6effb;font-size:1.25cqw;color:#193d70;min-height:0}
+.award-card>.car-caption .car-thumbnail{width:7.5cqw;height:8cqh;border-radius:.5cqw;background:white;object-fit:contain}
+.award-card>.car-caption>span{white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15}
+.award-card>.car-caption>svg{width:4cqw;height:3cqw;opacity:.45}
+.no-speed-award{grid-column:1/-1;display:grid;place-items:center;font-size:1.3cqw;color:#cbd9ef;border:1px solid #ffffff30;border-radius:1cqw;margin:0}
+.awards-screen .ticker p{font-size:1.1cqw}
+@media(prefers-reduced-motion:reduce){.ranking-row.award-contender{animation:none}}
+@media(max-width:700px) and (orientation:portrait){
+  .awards-screen>.stage{height:auto;min-height:100dvh;grid-template-rows:75px minmax(0,1fr) 90px}
+  #screen.awards-content{grid-template-rows:auto minmax(0,1fr);padding:20px 0;gap:24px}
+  .awards-heading{display:block}.awards-heading>div>span{font-size:2.4cqw}.awards-heading h1{font-size:7cqw;margin:8px 0}.awards-heading p{font-size:3cqw}
+  .award-divisions{grid-template-columns:1fr;gap:24px}.award-division{grid-template-rows:auto minmax(0,1fr);gap:8px}.award-division h2{font-size:6cqw}.award-division>header>span{font-size:3cqw}
+  .award-division>header>.award-page-count{font-size:3cqw}.award-page-count small{font-size:2.2cqw;margin-top:3px}
+  .award-grid{grid-template-columns:1fr;grid-template-rows:none;gap:12px}.award-card{height:320px;grid-template-rows:minmax(0,1fr) 85px;border-radius:14px}
+  .award-card>.profile-photo{width:calc(100% - 6cqw);height:calc(100% - 30px);border:4px solid white;border-bottom-width:8px;border-radius:9px}
+  .award-details{gap:8px;padding:10px 4cqw 10px 0}.award-rank{font-size:4cqw}.award-rank b{font-size:10cqw}.award-details h3{font-size:6.5cqw}.award-number{font-size:3cqw}.award-time{font-size:7cqw}.award-time small{font-size:3cqw}
+  .award-card>.car-caption{font-size:4.3cqw;padding:7px 3cqw;gap:3cqw}.award-card>.car-caption .car-thumbnail{width:24cqw;height:69px;border-radius:7px}.award-card>.car-caption>svg{width:15cqw;height:10cqw}
+  .no-speed-award{min-height:100px;font-size:4cqw}.awards-screen .ticker p{font-size:3.3cqw}
+}

@@ -66,3 +66,73 @@ header{display:flex;justify-content:space-between;align-items:center;gap:2cqw}.e
 @keyframes draw-spotlight{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.reveal.charging::after{display:none}.start-lights i{background:#ffcc37}.charge-track span{transform:none}}
 @media(max-width:700px) and (orientation:portrait){.status .sound-level{grid-column:1/3;grid-row:4;font-size:2.4cqw}.sound-level input{width:18cqw}.start-sequence,.revealed .result{height:150px}.launch-label,.revealed .result small,.revealed .result em{font-size:3cqw}.start-sequence strong{font-size:8cqw}.start-lights i{width:5cqw;height:5cqw}.revealed .result b{font-size:16cqw}.charge-track{height:4px}}
+
+/* Portrait-first draw: the car name stays; car images are omitted on this page. */
+.draw-screen{grid-template-rows:13cqh minmax(0,1fr) 4.5cqh}
+.team{grid-template-rows:4.5cqh minmax(0,1fr)}
+.team-head strong{font-size:1.35cqw}.team-head strong b{font-size:1.8cqw}
+.member{grid-template-columns:.95cqw 4.5cqw minmax(0,1fr);gap:.45cqw;padding:.2cqh .05cqw}
+.member .portrait{width:4.5cqw;height:4.5cqw;max-height:100%;border-radius:.6cqw}
+.member strong{font-size:1.5cqw}.member .car-name{font-size:.96cqw}
+.reveal-card{width:72cqw;max-height:94dvh;padding:2.5cqh 3.5cqw;overflow:auto}
+.reveal-driver{grid-template-columns:20cqw minmax(0,1fr);gap:3cqw;margin:2cqh 0}
+.reveal-driver .portrait{width:20cqw;height:20cqw;border:5px solid #fff;border-radius:1.2cqw;box-shadow:0 .7cqh 2cqw #001d5555}
+.reveal-driver strong{font-size:4.5cqw;line-height:1.2;word-break:keep-all}
+.reveal-driver .car-name{font-size:2.15cqw;line-height:1.3;margin-top:1cqh}
+.reveal-driver small{font-size:1.5cqw}
+.reveal-card .start-sequence,.reveal-card .result{height:17cqh}
+.reveal-card .result b{font-size:5.5cqw}
+.reveal-card #skip{margin-top:1cqh}
+.fly-ticket{grid-template-columns:20cqw minmax(0,1fr);gap:3cqw;padding:.25cqw}
+.fly-ticket .portrait{width:20cqw;height:20cqw;border-radius:1.2cqw}
+.fly-ticket strong{font-size:4.3cqw;line-height:1.2}.fly-ticket .car-name{font-size:2cqw}.fly-ticket small{font-size:1.25cqw}
+@media(max-width:700px) and (orientation:portrait){
+ .draw-screen{grid-template-rows:auto 1fr auto}.team{grid-template-rows:36px 1fr}.team-head strong{font-size:4cqw}.team-head strong b{font-size:5cqw}
+ .member{grid-template-columns:3cqw 10cqw minmax(0,1fr);gap:1.2cqw}.member .portrait{width:10cqw;height:10cqw}.member strong{font-size:3.5cqw}.member .car-name{font-size:2.8cqw}
+ .reveal-card{width:92cqw;padding:20px 5cqw}.reveal-driver,.fly-ticket{grid-template-columns:32cqw minmax(0,1fr);gap:3cqw}
+ .reveal-driver .portrait,.fly-ticket .portrait{width:32cqw;height:32cqw;border-width:3px;border-radius:3cqw}
+ .reveal-driver strong,.fly-ticket strong{font-size:7cqw}.reveal-driver .car-name,.fly-ticket .car-name{font-size:4cqw}
+ .reveal-card .start-sequence,.reveal-card .result{height:145px}.reveal-card .result b{font-size:16cqw}
+}
+
+/* Three red lamps and a silent hold, then lights-out / GO. */
+.start-sequence{gap:.65cqh}.start-sequence .launch-label{font-size:1.2cqw}.start-sequence strong{font-size:1.4cqw;color:#ccd7ef;letter-spacing:.2em}
+.start-lights{gap:.65cqw;border:2px solid #45617e;padding:.8cqh 1cqw;background:#020710;border-radius:1cqw;box-shadow:0 .5cqh 1cqh #00163377}
+.start-lights i{width:3.8cqw;height:3.8cqw;background:#231018;border:3px solid #0b1424;animation:red-start-lamp .14s ease-out .15s forwards}
+.start-lights i:nth-child(2){animation-delay:.85s}.start-lights i:nth-child(3){animation-delay:1.55s}
+@keyframes red-start-lamp{to{background:#fa3037;box-shadow:0 0 1.6cqw #ff1e3988,inset 0 .2cqw .5cqw #ffb4a955}}
+.race-go strong{font-family:Lilita,sans-serif;font-size:5.2cqw;color:#fff;margin-right:2cqw;font-style:italic;text-shadow:.15cqw .2cqw 0 #133565}
+.revealed .result.race-go b{font-size:5cqw}.revealed .result.race-go>span{gap:.5cqw}.revealed .result.race-go em{font-size:1.1cqw}
+@media(prefers-reduced-motion:reduce){.start-lights i{background:#fa3037}}
+@media(max-width:700px) and (orientation:portrait){.start-sequence .launch-label{font-size:3cqw}.start-sequence strong{font-size:3.5cqw}.start-lights i{width:9cqw;height:9cqw}.start-lights{padding:8px;gap:2cqw}.race-go strong{font-size:14cqw;margin-right:3cqw}.revealed .result.race-go b{font-size:14cqw}.revealed .result.race-go em{font-size:3.4cqw}}
+
+/* TV distance: keep all ten teams visible and give each portrait a full row. */
+@media(min-width:701px),(orientation:landscape){
+ .draw-screen{grid-template-rows:10.5cqh minmax(0,1fr) 3.5cqh;padding-inline:1.8cqw}
+ header{gap:1.5cqw}.eyebrow{font-size:1cqw}h1{font-size:2.5cqw;margin:.4cqh 0}header p{font-size:.85cqw}
+ .draw-grid{gap:1.1cqh .8cqw}.team{grid-template-rows:3.5cqh minmax(0,1fr)}
+ .team-head{padding-inline:.65cqw}.team-head strong{font-size:1.2cqw}.team-head strong b{font-size:1.65cqw}.team-head span{font-size:.78cqw}
+ .team-members{padding:.2cqh .5cqw}
+ .member{--draw-photo:min(5.25cqw,9.5cqh);grid-template-columns:.85cqw var(--draw-photo) minmax(0,1fr);gap:.4cqw;padding:.1cqh 0}
+ .member .portrait{width:var(--draw-photo);height:var(--draw-photo);max-height:100%;border-width:2px;border-radius:.6cqw}
+ .member .portrait img{object-fit:cover;object-position:50% 30%}
+ .ticket{font-size:.9cqw}.member .driver-info{gap:.3cqh}.member strong{font-size:1.65cqw;line-height:1.1}
+ .member .car-name{font-size:1.15cqw;line-height:1.15;color:#345c8b;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+ .member .car-name.unnamed{color:#758ba5}.member.empty strong{font-size:.95cqw}
+ footer{font-size:.8cqw}footer b{font-size:.95cqw}
+ .reveal-card{width:76cqw;padding:2.2cqh 3.2cqw}
+ .reveal-driver,.fly-ticket{grid-template-columns:22cqw minmax(0,1fr);gap:3cqw}
+ .reveal-driver .portrait,.fly-ticket .portrait{width:22cqw;height:22cqw}
+ .reveal-driver .portrait img,.fly-ticket .portrait img{object-fit:cover;object-position:50% 30%}
+ .reveal-driver strong,.fly-ticket strong{font-size:4.7cqw}
+ .reveal-driver .car-name,.fly-ticket .car-name{font-size:2.5cqw;line-height:1.2}
+ .reveal-card .start-sequence,.reveal-card .result{height:16cqh}
+}
+@media(max-width:700px) and (orientation:portrait){
+ .draw-grid{grid-template-rows:repeat(5,300px)}
+ .member{grid-template-columns:3cqw 13cqw minmax(0,1fr);gap:1cqw}
+ .member .portrait{width:13cqw;height:13cqw;max-height:100%}
+ .member .portrait img,.reveal-driver .portrait img,.fly-ticket .portrait img{object-fit:cover;object-position:50% 30%}
+ .member strong{font-size:3.8cqw;line-height:1.1}
+ .member .car-name{font-size:3cqw;line-height:1.15;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;color:#345c8b}
+}

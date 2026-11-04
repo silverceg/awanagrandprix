@@ -1,9 +1,10 @@
-import { isFour, laneRecords, scheduledRace, legacyOrder } from './race-format.js';
+import { isFour, laneRecords, scheduledRace, legacyOrder, displayRank } from './race-format.js';
 export { isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, groupNumber, legacyOrder } from './race-format.js';
 export const $ = selector => document.querySelector(selector);
 export { numberDraw } from './draw-model.js';
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-export const fmt = value => value === 'DNF' ? 'DNF' : value == null ? '—' : (value / 1000).toFixed(3);
+// Keep genuine milliseconds from historical backups visible; never round a rank.
+export const fmt = value => value === 'DNF' ? 'DNF' : value == null ? '—' : (value / 1000).toFixed(value % 10 === 0 ? 2 : 3);
 export const current = d => d.rounds.at(-1);
 export const nextCount = key => 1;
 export function numberedGroups(players) {
@@ -74,6 +75,7 @@ export function rows(d, r = current(d)) {
   const compare = (a, b) => a.best - b.best || (!r.advance && !isFour(r) ? (typeof a.tieBreak === 'number' ? a.tieBreak : Infinity) - (typeof b.tieBreak === 'number' ? b.tieBreak : Infinity) : 0) || 0;
   data.sort((a, b) => compare(a, b) || a.car.localeCompare(b.car, 'ko', { numeric: true }));
   data.forEach((row, i) => { row.rank = Number.isFinite(row.best) ? (i && compare(row, data[i - 1]) === 0 ? data[i - 1].rank : i + 1) : null; });
+  data.forEach(row => { row.rank = displayRank(d, r, row.rank); });
   return data;
 }
 export function lanes(r, heat, run) {
