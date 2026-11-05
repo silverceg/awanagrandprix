@@ -96,18 +96,32 @@ async function recorder(initial=fixture(),authenticated=true){
   };
 }
 
-test('기록관: 현재 경기만 표시하고 빈 레인을 건너뛰어 Enter로 검토 후 저장',async()=>{
+test('기록관: 빈 레인을 건너뛰고 마지막 Enter는 TV에 기록 표시, 다음 Enter만 경기 이동',async()=>{
   const h=await recorder();assert.equal(h.form.inputs.length,3);assert.match(h.html,/빈 레인/);
   const first=await h.type(0,'321');await h.key(first);assert.equal(first.value,'3.21');assert.equal(h.active,h.form.inputs[1]);
   await h.type(1,'322');await h.key(h.form.inputs[1]);await h.type(2,'323');await h.key(h.form.inputs[2]);
-  assert.equal(h.requests.length,0);assert.equal(h.active.id,'advance');
-  await h.key(h.active);assert.equal(h.requests.length,1);assert.equal(h.requests[0].name,'records');
+  assert.equal(h.requests.length,1);assert.equal(h.active.id,'advance');
+  assert.equal(h.requests[0].name,'records');assert.equal(h.requests[0].body.advance,false);
+  assert.equal(h.remote.meeting.cursor,0);assert.equal(h.remote.display.heat,0);assert.equal(h.remote.display.division,'awana');
+  assert.deepEqual(Object.values(h.remote.divisions.awana.rounds[0].results).map(r=>r.times[0]),[3210,3220,3230]);
+  assert.match(h.element('#message').textContent,/Enter를 한 번 더/);
+  await h.key(h.active);assert.deepEqual(h.requests.map(r=>r.name),['records','next-race']);
   assert.equal(h.inspect().state.meeting.cursor,1);assert.equal(h.active,h.form.inputs[0]);assert.match(h.html,/일반부/);
 });
-test('기록관: Ctrl+Enter는 한 번만 저장하며 빈 레인 없는 records를 전송',async()=>{
+test('기록관: Ctrl+Enter도 TV 유지 저장, 성공 후 Enter로 다음 경기 이동',async()=>{
   const h=await recorder();await h.fill();await h.key(h.form.inputs[0],true);
-  assert.equal(h.requests.length,1);assert.equal(Object.keys(h.requests[0].body.records).length,3);assert.equal(h.requests[0].body.advance,true);
-  assert.equal(h.inspect().state.meeting.cursor,1);
+  assert.equal(h.requests.length,1);assert.equal(Object.keys(h.requests[0].body.records).length,3);assert.equal(h.requests[0].body.advance,false);
+  assert.equal(h.inspect().state.meeting.cursor,0);
+  await h.key(h.active);assert.equal(h.inspect().state.meeting.cursor,1);
+});
+
+test('기록관: 4명 Enter 저장 실패나 길게 누르기로 다음 조를 건너뛰지 않음',async()=>{
+  const h=await recorder(fixture(1));await h.fill();h.fail(500);
+  await h.key(h.form.inputs[3]);assert.equal(h.remote.meeting.cursor,1);assert.equal(h.inspect().dirty,true);
+  h.fail(0);await h.key(h.form.inputs[3]);assert.equal(h.remote.meeting.cursor,1);assert.equal(h.active.id,'advance');
+  const count=h.requests.length;await h.key(h.active,false,true);assert.equal(h.requests.length,count);
+  await h.key(h.active);assert.equal(h.remote.meeting.cursor,2);assert.equal(h.active,h.form.inputs[0]);
+  await h.key(h.active);assert.equal(h.remote.meeting.cursor,2);assert.equal(h.requests.length,count+1);
 });
 test('기록관: DNF와 2자리 정밀도 처리, 신규 소수3자리 거부',async()=>{
   const h=await recorder();await h.fill();await h.type(0,'3.217');await h.submit();assert.equal(h.requests.length,0);
