@@ -77,7 +77,7 @@ progress{display:block;width:100%;height:.6cqh;margin-top:1.7cqh;border:0;appear
 /* Details on the left, inset framed portrait on the right; equal-width columns. */
 .profile-photo{width:3.1cqw;aspect-ratio:1;flex:none;display:grid;place-items:center;position:relative;overflow:hidden;border-radius:25%;color:#7199c9;background:#e8f1fc;border:1px solid #d6e5f6}
 .profile-photo>svg{width:70%;height:auto;max-height:80%;fill:currentColor}
-.profile-photo>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
+.profile-photo>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;background:#e8f1fc}
 .split-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:0;gap:0;align-items:stretch}
 .split-card>.profile-photo{grid-column:2;grid-row:1;align-self:center;justify-self:center;width:calc(100% - 1.15cqw);height:auto;min-height:0;aspect-ratio:1;border:.32cqw solid #fff;border-bottom-width:.6cqw;border-radius:.65cqw;background:linear-gradient(145deg,#edf6ff,#d5e7fb);box-shadow:0 .2cqw .5cqw #1538731c,0 0 0 1px #dbe7f1;transform:rotate(2deg)}
 .split-card>.card-details{grid-column:1;grid-row:1}
@@ -274,7 +274,7 @@ progress{margin-top:1cqh}
   .lane-card.split-card{grid-template-rows:minmax(0,1fr) 13cqh}
   .four-lane-screen .lane-card.split-card{grid-template-rows:minmax(0,1fr) 13cqh 13cqh}
   .lane-card>.profile-photo,.four-lane-screen .lane-card>.profile-photo{width:calc(100% - .8cqw);height:calc(100% - 4cqh);max-height:28cqh;aspect-ratio:auto;border-width:.28cqw;border-bottom-width:.45cqw;border-radius:.65cqw;transform:rotate(1deg)}
-  .lane-card>.profile-photo>img{object-fit:cover;object-position:center 38%;background:#e8f1fc}
+  .lane-card>.profile-photo>img{object-fit:contain;object-position:center;background:#e8f1fc}
   .lane-card .card-details{padding:1.2cqh .7cqw;gap:1.2cqh}
   .lane-card .lane-id{width:1.6cqw;height:1.6cqw;font-size:1.05cqw}
   .lane-card .lane-top>b{font-size:.85cqw}
@@ -297,7 +297,7 @@ progress{margin-top:1cqh}
   .ticker time{font-size:.75cqw;flex:none;align-self:center}
   .ranking-row{grid-template-columns:2cqw minmax(0,1fr) 5.2cqw 4.6cqw;grid-template-rows:minmax(0,1fr) 2.4cqh;column-gap:.45cqw}
   .rank-photo .profile-photo{width:100%;height:100%;max-width:none;max-height:9cqh;aspect-ratio:1}
-  .rank-photo .profile-photo>img{object-fit:cover;object-position:center 38%}
+  .rank-photo .profile-photo>img{object-fit:contain;object-position:center}
   .rank-car>.car-caption{font-size:.9cqw}.rank-car>.car-caption .car-thumbnail{width:2.5cqw;height:2.2cqh}
 }
 @media(max-width:700px) and (orientation:portrait){
@@ -334,7 +334,7 @@ progress{margin-top:1cqh}
 .award-card.award-place-2{--medal:#c6d8ed}
 .award-card.award-place-3{--medal:#d6a07f}
 .award-card>.profile-photo{grid-column:1;grid-row:1;align-self:center;justify-self:center;width:calc(100% - 1.7cqw);height:calc(100% - 2.5cqh);aspect-ratio:auto;border:.3cqw solid white;border-bottom-width:.6cqw;border-radius:.7cqw;box-shadow:0 .2cqw .65cqw #1a386a22;transform:rotate(-1deg)}
-.award-card>.profile-photo>img{object-fit:cover;object-position:center 38%}
+.award-card>.profile-photo>img{object-fit:contain;object-position:center}
 .award-details{grid-column:2;grid-row:1;display:flex;flex-direction:column;justify-content:center;gap:.7cqh;min-width:0;padding:1.1cqh 1cqw 1.1cqh .2cqw}
 .award-rank{font-size:1.05cqw;color:#7b570b;white-space:nowrap}
 .award-rank b{font:400 3cqw/1 'Lilita One',Jua,sans-serif;margin:0 .2cqw;color:#a67408}

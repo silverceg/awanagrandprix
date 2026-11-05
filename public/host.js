@@ -1,3 +1,4 @@
+import { editPhoto } from './photo-editor.js';
 import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups, numberedGroups, clearGroupSlot, numberDraw, isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, groupNumber, legacyOrder, matchPhotoFile, photoConflicts } from './common.js';
 import { quickTime } from './quick-entry.js';
 
@@ -124,7 +125,7 @@ function closeRosterDialog() {
 function openEditor(id) {
   const p=state.divisions[division].participants.find(p=>p.id===id);if(!p)return;
   editorId=id;photoDraft={};dirty=false;
-  openRosterDialog(`<h2 id="dialog-title">${p.drawPending?'추첨 대기':'#'+e(p.car)} ${e(p.name)} 정보 수정</h2><form id="participant-edit-form"><div class="editor-fields"><label>선수 이름<input name="name" value="${e(p.name)}" maxlength="40" required></label><label>스티커 번호<input name="car" value="${p.drawPending?'':e(p.car)}" maxlength="12" ${p.drawPending?'readonly placeholder="추첨할 때 위에서 지정"':'required'}></label><label>자동차 이름<input name="carName" value="${e(p.carName || '')}" maxlength="24" placeholder="나중에 입력해도 됩니다"></label></div><div class="photo-fields">${[['photoData','photoUrl','선수 사진'],['carPhotoData','carPhotoUrl','자동차 사진']].map(([input,field,label])=>`<div class="photo-field"><div id="preview-${input}" class="photo-preview ${field==='carPhotoUrl'?'car-photo':''}">${preview(p[field],label)}</div><label>${label}<input type="file" accept="image/jpeg,image/png,image/webp" data-photo="${input}" aria-label="${label} 선택"></label><button class="small ghost" type="button" data-remove-photo="${input}">사진 지우기</button></div>`).join('')}</div><p class="hint">JPG·PNG·WebP 사진을 선택하세요. 자동으로 크기를 줄여 저장합니다. 선수 사진은 정사각형 중앙 기준, 자동차는 전체 모습이 보이게 표시합니다. 사진이 없어도 등록할 수 있습니다.</p><p id="dialog-message" role="status" hidden></p><div class="form-actions dialog-actions"><button class="primary" id="save-participant">정보·사진 저장</button><button type="button" id="cancel-edit" class="ghost">닫기</button></div></form>`,id);
+  openRosterDialog(`<h2 id="dialog-title">${p.drawPending?'추첨 대기':'#'+e(p.car)} ${e(p.name)} 정보 수정</h2><form id="participant-edit-form"><div class="editor-fields"><label>선수 이름<input name="name" value="${e(p.name)}" maxlength="40" required></label><label>스티커 번호<input name="car" value="${p.drawPending?'':e(p.car)}" maxlength="12" ${p.drawPending?'readonly placeholder="추첨할 때 위에서 지정"':'required'}></label><label>자동차 이름<input name="carName" value="${e(p.carName || '')}" maxlength="24" placeholder="나중에 입력해도 됩니다"></label></div><div class="photo-fields">${[['photoData','photoUrl','선수 사진'],['carPhotoData','carPhotoUrl','자동차 사진']].map(([input,field,label])=>`<div class="photo-field"><div id="preview-${input}" class="photo-preview ${field==='carPhotoUrl'?'car-photo':''}">${preview(p[field],label)}</div><label>${label}<input type="file" accept="image/jpeg,image/png,image/webp" data-photo="${input}" aria-label="${label} 선택"></label><button class="small ghost" type="button" data-adjust-photo="${input}">확대·위치 조정</button><button class="small ghost" type="button" data-remove-photo="${input}">사진 지우기</button></div>`).join('')}</div><p class="hint">JPG·PNG·WebP 사진을 선택하세요. 자동으로 크기를 줄여 저장합니다. 기존 사진도 ‘확대·위치 조정’에서 드래그·확대할 수 있습니다. 관객 화면은 사진 전체를 표시합니다. 사진이 없어도 등록할 수 있습니다.</p><p id="dialog-message" role="status" hidden></p><div class="form-actions dialog-actions"><button class="primary" id="save-participant">정보·사진 저장</button><button type="button" id="cancel-edit" class="ghost">닫기</button></div></form>`,id);
 }
 async function photoData(file) {
   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20000000)throw Error('20MB 이하 JPG·PNG·WebP 사진을 선택하세요.');
@@ -427,6 +428,18 @@ app.addEventListener('click', async event => {
   if(b.id==='bulk-photos' && clean()){openBulkPhotos();return;}
   if(b.id==='save-bulk-photos'){await saveBulkPhotos();return;}
   if (b.id === 'cancel-edit') {closeRosterDialog();return;}
+  if (b.dataset.adjustPhoto) {
+    if(saving||mediaBusy)return;
+    const field=b.dataset.adjustPhoto,owner=editorId;
+    const source=$('#preview-'+field).querySelector('img')?.src;
+    if(!source){notify('사진을 먼저 선택해 주세요.',true);return;}
+    mediaBusy++;
+    try {
+      const result=await editPhoto(source,field==='carPhotoData');
+      if(result&&editorId===owner){photoDraft[field]=result;dirty=true;$('#preview-'+field).innerHTML=preview(result,field==='photoData'?'선수 사진':'자동차 사진');notify('구도를 적용했습니다. 정보·사진 저장을 누르면 TV에도 반영됩니다.');}
+    } finally {mediaBusy--;b.focus({preventScroll:true});}
+    return;
+  }
   if (b.dataset.removePhoto) { const field=b.dataset.removePhoto;photoDraft[field]='';dirty=true;$('#preview-'+field).innerHTML=field==='photoData'?'선수 사진':'자동차 사진';return; }
   if (b.dataset.dnf) { const input=document.getElementById('time-' + b.dataset.dnf);input.value = 'DNF';previewRecord(input,true);focusRecord(input);dirty = true; return; }
   if (b.dataset.division && clean()) { division = b.dataset.division; editorId=null;photoDraft={}; heat = run = 0; history = -1; render(); }

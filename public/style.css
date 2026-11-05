@@ -28,3 +28,13 @@ body.modal-open{overflow:hidden}
 
 /* Host quick entry: keep the physical lane order visible during entry. */
 .quick-entry-help{display:grid;gap:7px;background:#edf6ff;border:1px solid #c6dff4;border-radius:10px;padding:14px 16px;margin:0 0 18px;line-height:1.65}.quick-entry-help>b{font-size:16px}.quick-entry-help>span{font-size:13px}.quick-entry-help small{font-size:12px;color:#536b82}.quick-entry-help kbd{font:inherit;font-weight:800;background:white;border:1px solid #bdd1e4;border-radius:4px;padding:1px 5px}.entry-preview{display:block;min-height:35px;margin-bottom:8px;color:#17613f;font-size:13px;font-weight:800;line-height:1.45;overflow-wrap:anywhere}.entry-preview.invalid{color:#a33c34;font-size:11px}#records-form input[data-race-time]{font-size:30px;font-weight:800;min-width:0}#records-form input[data-race-time]:focus{outline:3px solid var(--lane);background:#fff}.lane-input:focus-within{box-shadow:0 0 0 2px var(--lane)}@media(max-width:680px){#records-form input[data-race-time]{font-size:27px}}
+
+/* Photo framing stays in a modal, leaving the roster and its scroll position intact. */
+.photo-adjust-dialog{width:min(850px,94vw);max-height:94dvh;overflow:auto;border:1px solid #b8cde7;border-radius:18px;padding:24px;background:#f8fbff;color:#15365c;box-shadow:0 24px 100px #071d4355}
+.photo-adjust-dialog::backdrop{background:#081d4188}
+.photo-adjust-dialog h2{margin:0 0 12px}.photo-adjust-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,1fr);gap:24px;align-items:center}
+.photo-adjust-layout canvas{display:block;width:auto;height:auto;max-width:100%;max-height:52dvh;margin:auto;touch-action:none;cursor:grab;border:4px solid white;outline:1px solid #b8cde7;border-radius:7px;box-shadow:0 5px 18px #183c6422}
+.photo-adjust-layout canvas:active{cursor:grabbing}.photo-adjust-controls{display:grid;gap:18px}.photo-adjust-controls label{display:grid;gap:8px}.photo-adjust-controls input[type=range]{width:100%;padding:0;min-height:30px}.photo-adjust-controls output{font-weight:700}.photo-adjust-controls .hint{line-height:1.6}
+.photo-adjust-dialog>.form-actions{margin-top:22px;justify-content:flex-end}.photo-adjust-error{color:#a32424}
+.photo-preview>img{object-fit:contain;background:#e8f1fc}
+@media(max-width:600px){.photo-adjust-layout{grid-template-columns:1fr}.photo-adjust-layout canvas{max-height:35dvh}.photo-adjust-dialog{padding:16px}.photo-adjust-controls{gap:8px}}

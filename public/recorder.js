@@ -43,7 +43,7 @@ function render(){
   }
   const d=state.divisions[t.division],next=schedule[state.meeting.cursor+1],totalGroups=schedule.length/4;
   app.innerHTML=`<section class="progress-heading"><div><span class="division">${e(d.name)}</span><h1>${groupNumber(state,t.division,t.heat)}조 <small>전체 ${totalGroups}개 조</small></h1></div><div><div class="round-strip" aria-label="본선 라운드">${[0,1,2,3].map(n=>`<span class="${n===t.run?'active':n<t.run?'done':''}">${n+1}R</span>`).join('')}</div><div class="progress-count">본선 ${t.run+1} / 4라운드 · ${state.meeting.cursor+1} / ${schedule.length}경기</div></div></section>
-  <p class="entry-help"><b>321 → 3.21초</b><span><kbd>Enter</kbd> 다음 레인 / 마지막에는 저장 버튼 확인</span><span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> 저장 후 다음</span></p>
+  <p class="entry-help"><b>321 → 3.21초</b><span><kbd>Enter</kbd> 다음 레인 → 마지막 기록에서 저장·TV 표시 → 한 번 더 누르면 다음 경기</span><span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> 현재 기록 저장·TV 표시</span></p>
   <form id="records-form"><div class="lanes">${lanes(r,t.heat,t.run).map((id,i)=>{
     const player=id&&d.participants.find(p=>p.id===id),value=id&&r.results[id].times[t.run],original=id&&value!==null?fmt(value):'';
     return `<section class="lane lane-${i+1}${id?'':' empty-lane'}"><div class="lane-label">${i+1}레인</div>${id?`<div class="driver"><small>선수 번호 #${e(player.car)}</small><strong>${e(player.name)}</strong></div><label for="time-${id}">기록 · 초<input id="time-${id}" name="${id}" data-race-time data-original="${e(original)}" value="${e(original)}" autocomplete="off" inputmode="decimal" placeholder="3.21" required aria-describedby="preview-${id}"></label><output id="preview-${id}" class="entry-preview" for="time-${id}" aria-live="polite">${original?e(original==='DNF'?'미완주 DNF':original+'초'):''}</output><button type="button" class="dnf" data-dnf="${id}">미완주 DNF</button><div class="lane-history">${laneRecords(r,id).map((time,l)=>`<span>${l+1}레인 <b>${fmt(time)}</b></span>`).join('')}</div>`:'<p>빈 레인</p>'}</section>`;
@@ -80,7 +80,7 @@ async function save(advance){
     state=result;dirty=false;
     if(pendingState?.revision>state.revision)state=pendingState;
     pendingState=null;$('#stale').hidden=true;saving=false;render();
-    notify(state.meeting?.status==='completed'?'모든 경기 기록이 저장되었습니다.':advance?'저장했습니다. 다음 경기 입력을 준비하세요.':'저장했습니다. 현재 경기와 TV 화면을 유지합니다.');
+    notify(state.meeting?.status==='completed'?'모든 경기 기록이 저장되었습니다.':advance?'저장했습니다. 다음 경기 입력을 준비하세요.':'저장했습니다. TV에 현재 경기 기록을 표시합니다. 확인 후 Enter를 한 번 더 누르면 다음 경기로 이동합니다.');
     if(advance)focusField(fields()[0]);else $('#advance')?.focus({preventScroll:true});
   }catch(err){
     notify(err.message||'저장하지 못했습니다. 입력값을 확인하고 다시 시도하세요.',true);
@@ -103,10 +103,15 @@ app.addEventListener('keydown',event=>{
   if(saving||event.repeat){event.preventDefault();return;}
   if(!event.ctrlKey&&!event.metaKey&&event.target.tagName==='BUTTON')return;
   event.preventDefault();
-  if(event.ctrlKey||event.metaKey){if(normalize()&&!$('#advance').disabled)$('#records-form').requestSubmit($('#advance'));return;}
+  if(event.ctrlKey||event.metaKey){if(normalize()&&!$('#stay').disabled)$('#records-form').requestSubmit($('#stay'));return;}
   const inputs=fields(),i=inputs.indexOf(event.target);
   if(i>=0){if(!preview(inputs[i],true).ok)return;if(inputs[i+1]){focusField(inputs[i+1]);return;}}
-  if(!$('#advance').disabled){$('#advance').focus({preventScroll:true});$('#advance').scrollIntoView({block:'nearest'});notify('레인별 기록을 확인한 뒤 Enter를 한 번 더 누르면 저장 후 다음 경기로 이동합니다.');}
+  // Publish this race before allowing a separate Enter to advance the TV.
+  // save(false) focuses the advance button only after the server confirms saving.
+  const {allSaved,changed,correction}=snapshot();
+  if(correction&&!$('#reason').value.trim()){notify('기존 기록을 고칠 때는 수정 사유를 입력하세요.',true);$('#reason').focus();return;}
+  if(allSaved&&!changed){$('#advance').focus({preventScroll:true});notify('Enter를 한 번 더 누르면 다음 경기로 이동합니다.');return;}
+  if(normalize()&&!$('#stay').disabled)$('#records-form').requestSubmit($('#stay'));
 });
 app.addEventListener('submit',event=>{if(event.target.id!=='records-form')return;event.preventDefault();return save(event.submitter?.value==='advance');});
 $('#refresh').addEventListener('click',async()=>{
