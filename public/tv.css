@@ -363,3 +363,23 @@ progress{margin-top:1cqh}
   .award-card>.car-caption{font-size:4.3cqw;padding:7px 3cqw;gap:3cqw}.award-card>.car-caption .car-thumbnail{width:24cqw;height:69px;border-radius:7px}.award-card>.car-caption>svg{width:15cqw;height:10cqw}
   .no-speed-award{min-height:100px;font-size:4cqw}.awards-screen .ticker p{font-size:3.3cqw}
 }
+
+/* Landscape source photos use the full card width instead of a narrow portrait slot. */
+@media (min-width:701px), (orientation:landscape) {
+  .lane-card.split-card{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) 13cqh}
+  .four-lane-screen .lane-card.split-card{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) 13cqh 13cqh}
+  .lane-card>.profile-photo,.four-lane-screen .lane-card>.profile-photo{grid-column:1;grid-row:1;width:calc(100% - 1cqw);height:auto;max-height:none;aspect-ratio:16/9;margin-top:1.1cqh;border:.25cqw solid white;border-radius:.6cqw;transform:none;align-self:start}
+  .lane-card>.card-details{grid-column:1;grid-row:2;padding:.6cqh .85cqw;gap:.4cqh;align-items:center}
+  .lane-card .lane-top{width:100%;flex:none}
+  .lane-card h3{font-size:1.7cqw;line-height:1.1;margin:0;text-align:center}
+  .lane-card .lane-time{font-size:2.1cqw;line-height:1.1;text-align:center}
+  .lane-card .ready-label{font-size:1.55cqw}
+  .lane-card>.car-caption{grid-column:1;grid-row:3}
+  .lane-card>.lane-history{grid-column:1;grid-row:4}
+}
+@media(max-width:700px) and (orientation:portrait){
+  .lane-card.split-card,.four-lane-screen .lane-card.split-card{grid-template-columns:1fr;grid-template-rows:auto minmax(90px,1fr) 65px 75px}
+  .lane-card>.profile-photo,.four-lane-screen .lane-card>.profile-photo{grid-column:1;grid-row:1;width:calc(100% - 3cqw);height:auto;max-height:none;aspect-ratio:16/9;margin-top:10px;transform:none}
+  .lane-card>.card-details{grid-column:1;grid-row:2;align-items:center}.lane-card .lane-top{width:100%}
+  .lane-card>.car-caption{grid-column:1;grid-row:3}.lane-card>.lane-history{grid-column:1;grid-row:4}
+}

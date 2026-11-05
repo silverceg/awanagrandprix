@@ -9,7 +9,7 @@ export async function editPhoto(source, car = false) {
   dialog.innerHTML = `<h2 id="photo-adjust-title">${car?'자동차':'선수'} 사진 · 위치와 크기 조정</h2>
     <p>사진을 드래그해 옮기세요. 확대와 위치 막대로도 조정할 수 있습니다.</p>
     <div class="photo-adjust-layout"><canvas aria-label="저장할 사진 미리보기"></canvas><div class="photo-adjust-controls">
-    <label>사진 비율<select data-adjust="ratio"><option value="0.5">TV 세로 액자 · 1:2</option><option value="0.75">세로 사진 · 3:4</option><option value="1">정사각형 · 1:1</option><option value="1.3333333333">자동차 가로 · 4:3</option><option value="original">원본 비율</option></select></label>
+    <label>사진 비율<select data-adjust="ratio"><option value="1.7777777778">TV 가로 액자 · 16:9</option><option value="0.5">세로 액자 · 1:2</option><option value="0.75">세로 사진 · 3:4</option><option value="1">정사각형 · 1:1</option><option value="1.3333333333">자동차 가로 · 4:3</option><option value="original">원본 비율</option></select></label>
     <label>확대 <output data-readout="zoom">100%</output><input data-adjust="zoom" aria-label="사진 확대" type="range" min="1" max="5" step="0.01" value="1"></label>
     <label>좌우 위치<input data-adjust="x" aria-label="사진 좌우 위치" type="range" min="-100" max="100" step="1" value="0"></label>
     <label>위아래 위치<input data-adjust="y" aria-label="사진 위아래 위치" type="range" min="-100" max="100" step="1" value="0"></label>
@@ -19,7 +19,7 @@ export async function editPhoto(source, car = false) {
     <div class="form-actions"><button type="button" class="primary" data-adjust-action="apply">이 구도 적용</button><button type="button" class="ghost" data-adjust-action="cancel">취소</button></div>`;
   const canvas=dialog.querySelector('canvas'),ctx=canvas.getContext('2d');
   const control=name=>dialog.querySelector(`[data-adjust="${name}"]`);
-  control('ratio').value=car?'1.3333333333':'0.5';
+  control('ratio').value=car?'1.3333333333':'1.7777777778';
   const draw=()=>{
     const ratio=control('ratio').value==='original'?image.naturalWidth/image.naturalHeight:Number(control('ratio').value);
     canvas.width=Math.max(1,Math.round(ratio>=1?512:512*ratio));
