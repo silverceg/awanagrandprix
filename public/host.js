@@ -1,4 +1,4 @@
-import { editPhoto } from './photo-editor.js';
+import { editPhoto, preparePhoto } from './photo-editor.js';
 import { $, escape as e, fmt, current, rows, lanes, ranking, api, connect, nextCount, parseRoster, orderedGroups, numberedGroups, clearGroupSlot, numberDraw, isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, groupNumber, legacyOrder, matchPhotoFile, photoConflicts } from './common.js';
 import { quickTime } from './quick-entry.js';
 
@@ -125,19 +125,12 @@ function closeRosterDialog() {
 function openEditor(id) {
   const p=state.divisions[division].participants.find(p=>p.id===id);if(!p)return;
   editorId=id;photoDraft={};dirty=false;
-  openRosterDialog(`<h2 id="dialog-title">${p.drawPending?'추첨 대기':'#'+e(p.car)} ${e(p.name)} 정보 수정</h2><form id="participant-edit-form"><div class="editor-fields"><label>선수 이름<input name="name" value="${e(p.name)}" maxlength="40" required></label><label>스티커 번호<input name="car" value="${p.drawPending?'':e(p.car)}" maxlength="12" ${p.drawPending?'readonly placeholder="추첨할 때 위에서 지정"':'required'}></label><label>자동차 이름<input name="carName" value="${e(p.carName || '')}" maxlength="24" placeholder="나중에 입력해도 됩니다"></label></div><div class="photo-fields">${[['photoData','photoUrl','선수 사진'],['carPhotoData','carPhotoUrl','자동차 사진']].map(([input,field,label])=>`<div class="photo-field"><div id="preview-${input}" class="photo-preview ${field==='carPhotoUrl'?'car-photo':''}">${preview(p[field],label)}</div><label>${label}<input type="file" accept="image/jpeg,image/png,image/webp" data-photo="${input}" aria-label="${label} 선택"></label><button class="small ghost" type="button" data-adjust-photo="${input}">확대·위치 조정</button><button class="small ghost" type="button" data-remove-photo="${input}">사진 지우기</button></div>`).join('')}</div><p class="hint">JPG·PNG·WebP 사진을 선택하세요. 자동으로 크기를 줄여 저장합니다. 기존 사진도 ‘확대·위치 조정’에서 드래그·확대할 수 있습니다. 관객 화면은 사진 전체를 표시합니다. 사진이 없어도 등록할 수 있습니다.</p><p id="dialog-message" role="status" hidden></p><div class="form-actions dialog-actions"><button class="primary" id="save-participant">정보·사진 저장</button><button type="button" id="cancel-edit" class="ghost">닫기</button></div></form>`,id);
+  openRosterDialog(`<h2 id="dialog-title">${p.drawPending?'추첨 대기':'#'+e(p.car)} ${e(p.name)} 정보 수정</h2><form id="participant-edit-form"><div class="editor-fields"><label>선수 이름<input name="name" value="${e(p.name)}" maxlength="40" required></label><label>스티커 번호<input name="car" value="${p.drawPending?'':e(p.car)}" maxlength="12" ${p.drawPending?'readonly placeholder="추첨할 때 위에서 지정"':'required'}></label><label>자동차 이름<input name="carName" value="${e(p.carName || '')}" maxlength="24" placeholder="나중에 입력해도 됩니다"></label></div><div class="photo-fields">${[['photoData','photoUrl','선수 사진'],['carPhotoData','carPhotoUrl','자동차 사진']].map(([input,field,label])=>`<div class="photo-field"><div id="preview-${input}" class="photo-preview ${field==='carPhotoUrl'?'car-photo':''}">${preview(p[field],label)}</div><label>${label}<input type="file" accept="image/jpeg,image/png,image/webp" data-photo="${input}" aria-label="${label} 선택"></label><button class="small ghost" type="button" data-adjust-photo="${input}">확대·위치 조정</button><button class="small ghost" type="button" data-remove-photo="${input}">사진 지우기</button></div>`).join('')}</div><p class="hint">JPG·PNG·WebP 사진을 선택하세요. 용량에 맞춰 최대 2048픽셀로 저장하며, 작은 JPEG는 원본을 유지합니다. 기존 사진도 ‘확대·위치 조정’에서 드래그·확대할 수 있습니다. 관객 화면은 사진 전체를 표시합니다. 사진이 없어도 등록할 수 있습니다.</p><p id="dialog-message" role="status" hidden></p><div class="form-actions dialog-actions"><button class="primary" id="save-participant">정보·사진 저장</button><button type="button" id="cancel-edit" class="ghost">닫기</button></div></form>`,id);
 }
 async function photoData(file) {
-  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20000000)throw Error('20MB 이하 JPG·PNG·WebP 사진을 선택하세요.');
-  const bitmap=await createImageBitmap(file);
-  try {
-    const scale=Math.min(1,512/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
-    canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-    const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
-    let data=canvas.toDataURL('image/jpeg',.82);if(data.length>240000)data=canvas.toDataURL('image/jpeg',.55);
-    if(data.length>240000)throw Error('사진을 더 작은 크기로 선택해 주세요.');return data;
-  }finally{bitmap.close();}
+  return preparePhoto(file);
 }
+
 function openBulkPhotos() {
   bulkMode=true;bulkPhotos=[];dirty=false;
   openRosterDialog(`<h2 id="dialog-title">사진 여러 장 한 번에 넣기</h2><p>현재 부문: <b>${e(state.divisions[division].name)}</b> · 사진을 Ctrl 또는 Shift로 여러 장 선택하세요.</p><p class="hint">김하늘.jpg → 선수 사진 / 김하늘_자동차.jpg → 자동차 사진. 번호 지정 후에는 1.jpg, 1_자동차.jpg도 가능합니다. 동명이인·일치하지 않는 파일은 직접 선수를 선택하세요.</p><label>기본 사진 종류<select id="bulk-kind"><option value="photoData">선수 사진</option><option value="carPhotoData">자동차 사진</option></select></label><label>사진 여러 장 선택<input id="bulk-files" type="file" multiple accept="image/jpeg,image/png,image/webp"></label><div id="bulk-photo-list"></div><p id="dialog-message" role="status" hidden></p><div class="dialog-actions form-actions"><button id="save-bulk-photos" class="primary" disabled>연결한 사진 저장</button><button id="cancel-edit" class="ghost" type="button">닫기</button></div>`,'bulk');

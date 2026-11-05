@@ -1,3 +1,52 @@
+const PHOTO_MAX_EDGE = 2048;
+const PHOTO_MAX_DATA_LENGTH = 240000; // Existing 180 KB server/media and backup limits.
+
+// Prefer resolution and high JPEG quality; reduce dimensions only if the image
+// cannot fit the storage budget. Always resample from the original canvas.
+export function encodePhotoCanvas(source) {
+  const canvas=document.createElement('canvas');
+  let edge=Math.min(PHOTO_MAX_EDGE,Math.max(source.width,source.height));
+  while(edge>=128){
+    const scale=edge/Math.max(source.width,source.height);
+    canvas.width=Math.max(1,Math.round(source.width*scale));
+    canvas.height=Math.max(1,Math.round(source.height*scale));
+    const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(source,0,0,canvas.width,canvas.height);
+    for(const quality of [.94,.88,.82,.76,.70]){
+      const data=canvas.toDataURL('image/jpeg',quality);
+      if(data.length<=PHOTO_MAX_DATA_LENGTH)return data;
+    }
+    edge=Math.floor(edge*.8);
+  }
+  // Tiny images need no resolution reduction.
+  if(Math.max(source.width,source.height)<128)return source.toDataURL('image/jpeg',.94);
+  throw Error('사진을 저장 용량에 맞추지 못했습니다. 다른 사진을 선택해 주세요.');
+}
+
+export async function preparePhoto(file) {
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20000000)throw Error('20MB 이하 JPG·PNG·WebP 사진을 선택하세요.');
+  const bitmap=await createImageBitmap(file);
+  try {
+    // Small JPEGs already fit: keep their original bytes and resolution.
+    if(file.type==='image/jpeg'&&file.size<=179982){
+      const bytes=new Uint8Array(await file.arrayBuffer());
+      if(bytes[0]===255&&bytes[1]===216&&bytes.at(-2)===255&&bytes.at(-1)===217){
+        return await new Promise((resolve,reject)=>{
+          const reader=new FileReader();reader.onload=()=>resolve(reader.result);
+          reader.onerror=()=>reject(Error('사진을 읽지 못했습니다.'));reader.readAsDataURL(file);
+        });
+      }
+    }
+    const scale=Math.min(1,PHOTO_MAX_EDGE/Math.max(bitmap.width,bitmap.height));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+    const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+    return encodePhotoCanvas(canvas);
+  }finally{bitmap.close();}
+}
+
 // Return a JPEG draft; the host's existing save action remains the only server write.
 export async function editPhoto(source, car = false) {
   const image = new Image();
@@ -22,8 +71,10 @@ export async function editPhoto(source, car = false) {
   control('ratio').value=car?'1.3333333333':'1.7777777778';
   const draw=()=>{
     const ratio=control('ratio').value==='original'?image.naturalWidth/image.naturalHeight:Number(control('ratio').value);
-    canvas.width=Math.max(1,Math.round(ratio>=1?512:512*ratio));
-    canvas.height=Math.max(1,Math.round(ratio>=1?512/ratio:512));
+    const edge=Math.min(PHOTO_MAX_EDGE,Math.max(image.naturalWidth,image.naturalHeight));
+    canvas.width=Math.max(1,Math.round(ratio>=1?edge:edge*ratio));
+    canvas.height=Math.max(1,Math.round(ratio>=1?edge/ratio:edge));
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     const zoom=Number(control('zoom').value),scale=Math.min(canvas.width/image.naturalWidth,canvas.height/image.naturalHeight)*zoom;
     const w=image.naturalWidth*scale,h=image.naturalHeight*scale;
     const x=Number(control('x').value)*canvas.width/100,y=Number(control('y').value)*canvas.height/100;
@@ -58,9 +109,7 @@ export async function editPhoto(source, car = false) {
       if(action==='reset'){control('zoom').value='1';control('x').value=control('y').value='0';draw();}
       if(action==='apply'){
         try{
-          let data=canvas.toDataURL('image/jpeg',.9);
-          if(data.length>240000)data=canvas.toDataURL('image/jpeg',.65);
-          if(data.length>240000)throw Error('사진 용량 초과');
+          const data=encodePhotoCanvas(canvas);
           finish(data);
         }catch{const error=dialog.querySelector('.photo-adjust-error');error.hidden=false;error.textContent='사진을 적용하지 못했습니다. 다른 사진을 선택해 주세요.';}
       }
