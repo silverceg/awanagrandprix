@@ -295,7 +295,7 @@ progress{margin-top:1cqh}
   .next-roster{display:flex;flex-wrap:wrap;gap:.2cqh .85cqw;font-size:1.05cqw;line-height:1.15;color:white}
   .next-player{white-space:nowrap}.next-player small{font-family:Arial,sans-serif;font-size:.72em;color:#cde6ff}
   .ticker time{font-size:.75cqw;flex:none;align-self:center}
-  .ranking-row{grid-template-columns:2cqw minmax(0,1fr) 5.2cqw 4.6cqw;grid-template-rows:minmax(0,1fr) 2.4cqh;column-gap:.45cqw}
+  .ranking-row{grid-template-columns:2cqw minmax(0,1fr) 6.3cqw 4.6cqw;grid-template-rows:minmax(0,1fr) 2.4cqh;column-gap:.45cqw}
   .rank-photo .profile-photo{width:100%;height:100%;max-width:none;max-height:9cqh;aspect-ratio:1}
   .rank-photo .profile-photo>img{object-fit:contain;object-position:center}
   .rank-car>.car-caption{font-size:.9cqw}.rank-car>.car-caption .car-thumbnail{width:2.5cqw;height:2.2cqh}

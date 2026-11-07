@@ -3,8 +3,8 @@ export { isFour, laneRecords, runCount, eventSchedule, scheduledRace, phases, gr
 export const $ = selector => document.querySelector(selector);
 export { numberDraw } from './draw-model.js';
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-// Keep genuine milliseconds from historical backups visible; never round a rank.
-export const fmt = value => value === 'DNF' ? 'DNF' : value == null ? '—' : (value / 1000).toFixed(value % 10 === 0 ? 2 : 3);
+// Display every record to millisecond precision without changing stored values.
+export const fmt = value => value === 'DNF' ? 'DNF' : value == null ? '—' : (value / 1000).toFixed(3);
 export const current = d => d.rounds.at(-1);
 export const nextCount = key => 1;
 export function numberedGroups(players) {
