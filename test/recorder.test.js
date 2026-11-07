@@ -19,7 +19,7 @@ function fixture(cursor=0){
   mutate(s,'start',{division:'open'});
   for(let n=0;n<cursor;n++){
     const t=scheduledRace(s),r=s.divisions[t.division].rounds[0];
-    mutate(s,'records',{...t,roundId:r.id,advance:true,records:Object.fromEntries(lanesFor(r,t.heat,t.run).filter(Boolean).map(id=>[id,'3.21']))});
+    mutate(s,'records',{...t,roundId:r.id,advance:true,records:Object.fromEntries(lanesFor(r,t.heat,t.run).filter(Boolean).map(id=>[id,'3.210']))});
   }
   return s;
 }
@@ -81,7 +81,7 @@ async function recorder(initial=fixture(),authenticated=true){
   return {requests,confirmations,element,get form(){return form;},get active(){return activeElement;},get html(){return html;},
     inspect:()=>context.inspect(),get remote(){return structuredClone(remote);},confirm(value){confirmation=value;},fail(value){failedStatus=value;},defer(value){hold=value;},
     async type(index,value){const input=form.inputs[index];input.value=value;await fire('#recorder','input',{target:input});return input;},
-    async fill(value='321'){for(let i=0;i<form.inputs.length;i++)await this.type(i,value);},
+    async fill(value='3210'){for(let i=0;i<form.inputs.length;i++)await this.type(i,value);},
     async key(target,ctrlKey=false,repeat=false){
       let prevented=false;const before=form;
       await fire('#recorder','keydown',{target,key:'Enter',ctrlKey,repeat,preventDefault(){prevented=true;}});
@@ -98,8 +98,8 @@ async function recorder(initial=fixture(),authenticated=true){
 
 test('기록관: 빈 레인을 건너뛰고 마지막 Enter는 TV에 기록 표시, 다음 Enter만 경기 이동',async()=>{
   const h=await recorder();assert.equal(h.form.inputs.length,3);assert.match(h.html,/빈 레인/);
-  const first=await h.type(0,'321');await h.key(first);assert.equal(first.value,'3.21');assert.equal(h.active,h.form.inputs[1]);
-  await h.type(1,'322');await h.key(h.form.inputs[1]);await h.type(2,'323');await h.key(h.form.inputs[2]);
+  const first=await h.type(0,'3210');await h.key(first);assert.equal(first.value,'3.210');assert.equal(h.active,h.form.inputs[1]);
+  await h.type(1,'3220');await h.key(h.form.inputs[1]);await h.type(2,'3230');await h.key(h.form.inputs[2]);
   assert.equal(h.requests.length,1);assert.equal(h.active.id,'advance');
   assert.equal(h.requests[0].name,'records');assert.equal(h.requests[0].body.advance,false);
   assert.equal(h.remote.meeting.cursor,0);assert.equal(h.remote.display.heat,0);assert.equal(h.remote.display.division,'awana');
@@ -123,10 +123,10 @@ test('기록관: 4명 Enter 저장 실패나 길게 누르기로 다음 조를 �
   await h.key(h.active);assert.equal(h.remote.meeting.cursor,2);assert.equal(h.active,h.form.inputs[0]);
   await h.key(h.active);assert.equal(h.remote.meeting.cursor,2);assert.equal(h.requests.length,count+1);
 });
-test('기록관: DNF와 2자리 정밀도 처리, 신규 소수3자리 거부',async()=>{
-  const h=await recorder();await h.fill();await h.type(0,'3.217');await h.submit();assert.equal(h.requests.length,0);
-  await h.type(0,'1025');await h.dnf(1);await h.submit();
-  assert.deepEqual(Object.values(h.requests[0].body.records),['10.25','DNF','3.21']);
+test('기록관: DNF와 3자리 정밀도 처리, 소수4자리 거부',async()=>{
+  const h=await recorder();await h.fill();await h.type(0,'3.2178');await h.submit();assert.equal(h.requests.length,0);
+  await h.type(0,'10250');await h.dnf(1);await h.submit();
+  assert.deepEqual(Object.values(h.requests[0].body.records),['10.250','DNF','3.210']);
 });
 test('기록관: 기록만 저장 후 다음 이동은 수정사유 없이 next-race만 호출',async()=>{
   const h=await recorder();await h.fill();await h.submit(false);assert.equal(h.inspect().state.meeting.cursor,0);
@@ -136,13 +136,13 @@ test('기록관: 기록만 저장 후 다음 이동은 수정사유 없이 next-
 test('기록관: 저장한 기록 수정은 사유를 요구하고 legacy정밀도는 보존',async()=>{
   const state=fixture(),r=state.divisions.awana.rounds[0],ids=r.entrantIds;
   r.results[ids[0]].times[0]=3217;r.results[ids[1]].times[0]=3220;r.results[ids[2]].times[0]=3230;
-  const h=await recorder(state);await h.type(1,'325');await h.submit();assert.equal(h.requests.length,0);assert.equal(h.element('#correction').hidden,false);
+  const h=await recorder(state);await h.type(1,'3250');await h.submit();assert.equal(h.requests.length,0);assert.equal(h.element('#correction').hidden,false);
   h.form.reason.value='스톱워치 확인';await h.submit();assert.equal(h.requests.length,1);
   assert.equal(h.requests[0].body.records[ids[0]],'3.217');assert.equal(h.requests[0].body.reason,'스톱워치 확인');
 });
 test('기록관: 부분 저장된 복원 경기에서도 수정사유를 받아 저장',async()=>{
   const state=fixture(),r=state.divisions.awana.rounds[0];r.results[r.entrantIds[0]].times[0]=3210;
-  const h=await recorder(state);await h.type(1,'322');await h.type(2,'323');assert.equal(h.element('#correction').hidden,false);
+  const h=await recorder(state);await h.type(1,'3220');await h.type(2,'3230');assert.equal(h.element('#correction').hidden,false);
   await h.submit();assert.equal(h.requests.length,0);h.form.reason.value='미입력 보완';await h.submit();assert.equal(h.requests.length,1);
 });
 test('기록관: Dirty SSE는 입력과 현재 조를 보존하고 최신 확인 전 저장 차단',async()=>{
@@ -159,8 +159,8 @@ test('기록관: Clean SSE는 새 현재 경기와 물리레인 순서로 이동
   assert.equal(h.active,h.form.inputs[0]);
 });
 test('기록관: 409와 통신 실패는 입력을 지우거나 자동 재시도하지 않음',async()=>{
-  const h=await recorder();await h.fill();h.fail(500);await h.submit();assert.equal(h.form.inputs[0].value,'3.21');assert.equal(h.inspect().dirty,true);assert.equal(h.requests.length,1);
-  h.fail(409);await h.submit();assert.equal(h.form.inputs[0].value,'3.21');assert.equal(h.element('#stale').hidden,false);assert.equal(h.requests.length,2);
+  const h=await recorder();await h.fill();h.fail(500);await h.submit();assert.equal(h.form.inputs[0].value,'3.210');assert.equal(h.inspect().dirty,true);assert.equal(h.requests.length,1);
+  h.fail(409);await h.submit();assert.equal(h.form.inputs[0].value,'3.210');assert.equal(h.element('#stale').hidden,false);assert.equal(h.requests.length,2);
 });
 test('기록관: 저장 중 중복 제출과 Enter 길게 누르기 차단',async()=>{
   const h=await recorder();await h.fill();let release;h.defer(new Promise(resolve=>release=resolve));
@@ -170,8 +170,8 @@ test('기록관: 저장 중 중복 제출과 Enter 길게 누르기 차단',asyn
 test('기록관: PIN 로그인은 같은 세션 API를 사용하고 만료되어도 입력 유지',async()=>{
   const h=await recorder(fixture(),false);assert.equal(h.form,null);assert.equal(h.element('#login').hidden,false);
   h.element('#pin').value='test-pin';await h.login();assert.equal(h.form.inputs.length,3);assert.equal(h.requests[0].name,'login');
-  await h.fill();h.fail(401);await h.submit();assert.equal(h.element('#recorder').hidden,true);assert.equal(h.form.inputs[0].value,'3.21');
-  h.fail(0);await h.login();assert.equal(h.element('#recorder').hidden,false);assert.equal(h.form.inputs[0].value,'3.21');
+  await h.fill();h.fail(401);await h.submit();assert.equal(h.element('#recorder').hidden,true);assert.equal(h.form.inputs[0].value,'3.210');
+  h.fail(0);await h.login();assert.equal(h.element('#recorder').hidden,false);assert.equal(h.form.inputs[0].value,'3.210');
 });
 test('기록관: 각 부문 마지막 확인 취소 후 재시도, 전체 완료는 읽기 전용',async()=>{
   const h=await recorder(fixture(6));await h.fill();h.confirm(false);await h.submit();assert.equal(h.requests.length,0);assert.equal(h.confirmations.length,1);
